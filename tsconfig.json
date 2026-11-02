@@ -1,0 +1,3 @@
+{
+	"extends": "@katip/config/tsconfig.base.json"
+}
