@@ -15,11 +15,11 @@ Kâtip is a personal assistant that understands anything said to it on Telegram,
 
 Things that come to mind (a livestream, a bill, a birthday, a meeting decision) get lost because they are never written down. Even when written down, they are useless if not surfaced at the right time. Existing to-do apps require typed input and do not understand free-form Turkish speech well.
 
-| Goal | Description |
-|---|---|
-| Personal use | Emin will use it every day. This is the first measure of success |
-| Technical depth | An engine that turns free-form Turkish speech into structured records, an eval set, and later a fine-tuned small model |
-| Process experience | The project is built with an agent-based development pipeline (see `docs/agent-pipeline.md`) |
+| Goal               | Description                                                                                                            |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| Personal use       | Emin will use it every day. This is the first measure of success                                                       |
+| Technical depth    | An engine that turns free-form Turkish speech into structured records, an eval set, and later a fine-tuned small model |
+| Process experience | The project is built with an agent-based development pipeline (see `docs/agent-pipeline.md`)                           |
 
 Scope is deliberately narrow. Selling to companies, team management and personal finance analysis are not goals.
 
@@ -29,13 +29,13 @@ The user writes or sends a voice message to Telegram. The system turns it into a
 
 ### Channels
 
-| Channel | Version | Note |
-|---|---|---|
-| Telegram text message | v1 | |
-| Telegram voice message | v1 | Converted to text via STT |
-| Long audio recording (meeting) | v2 | Bot API download limit is 20 MB |
-| Live listening | v3 | Bot API does not support voice calls. Needs a userbot or web recording |
-| Web UI | v1 | Sign-in, account linking, item list and history |
+| Channel                        | Version | Note                                                                   |
+| ------------------------------ | ------- | ---------------------------------------------------------------------- |
+| Telegram text message          | v1      |                                                                        |
+| Telegram voice message         | v1      | Converted to text via STT                                              |
+| Long audio recording (meeting) | v2      | Bot API download limit is 20 MB                                        |
+| Live listening                 | v3      | Bot API does not support voice calls. Needs a userbot or web recording |
+| Web UI                         | v1      | Sign-in, account linking, item list and history                        |
 
 ### Core flow example
 
@@ -48,14 +48,14 @@ Relative date expressions are always echoed back as a full date, so mistakes in 
 
 ### Item types
 
-| Type | Example | Default reminder |
-|---|---|---|
-| Event | Thursday 19:00 livestream | Morning list on the day, and 30 min before |
-| Task | Get the car inspected | Morning of the due date |
-| Reminder | Remind me a week before | At the given time |
-| Recurring | Electricity bill on the 15th of every month | On every occurrence |
-| Annual date | Onur's birthday | One day before |
-| Note | Information with no time | None |
+| Type        | Example                                     | Default reminder                           |
+| ----------- | ------------------------------------------- | ------------------------------------------ |
+| Event       | Thursday 19:00 livestream                   | Morning list on the day, and 30 min before |
+| Task        | Get the car inspected                       | Morning of the due date                    |
+| Reminder    | Remind me a week before                     | At the given time                          |
+| Recurring   | Electricity bill on the 15th of every month | On every occurrence                        |
+| Annual date | Onur's birthday                             | One day before                             |
+| Note        | Information with no time                    | None                                       |
 
 Items live under scopes such as personal, work and other. The system suggests a scope, the user corrects it.
 
@@ -137,16 +137,16 @@ The user signs in on the web and links their Telegram account with a single-use 
 
 The data model is built to already support v2 item hand-over and the fine-tuning dataset. All times are stored in UTC; the time zone is on the user record.
 
-| Table | Owner | Key fields | Why |
-|---|---|---|---|
-| `users` | Core | id, email, name, timezone | |
-| `channel_identities` | Core | user_id, channel, external_id, linked_at | Maps channel identity to internal identity |
-| `link_tokens` | Core | token_hash, user_id, direction, expires_at, used_at | Account linking |
-| `inputs` | Core | user_id, channel, type, raw content, transcript, parse result, model version, corrected? | Every message is stored raw. Eval and fine-tune datasets come from here |
-| `items` | Core | owner_id, created_by, type, title, scope, starts_at, due_at, priority, status, source_input_id | `owner_id` and `created_by` are separate, so hand-over needs no schema change |
-| `item_events` | Core | item_id, event, time | Item history |
-| `reminders` | Core | item_id, fire_at, status, sent_at | Scheduler queue |
-| `tg_message_links` | Telegram adapter | chat_id, message_id, item_id | Reply-to-add-detail. Core does not know this table |
+| Table                | Owner            | Key fields                                                                                     | Why                                                                           |
+| -------------------- | ---------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `users`              | Core             | id, email, name, timezone                                                                      |                                                                               |
+| `channel_identities` | Core             | user_id, channel, external_id, linked_at                                                       | Maps channel identity to internal identity                                    |
+| `link_tokens`        | Core             | token_hash, user_id, direction, expires_at, used_at                                            | Account linking                                                               |
+| `inputs`             | Core             | user_id, channel, type, raw content, transcript, parse result, model version, corrected?       | Every message is stored raw. Eval and fine-tune datasets come from here       |
+| `items`              | Core             | owner_id, created_by, type, title, scope, starts_at, due_at, priority, status, source_input_id | `owner_id` and `created_by` are separate, so hand-over needs no schema change |
+| `item_events`        | Core             | item_id, event, time                                                                           | Item history                                                                  |
+| `reminders`          | Core             | item_id, fire_at, status, sent_at                                                              | Scheduler queue                                                               |
+| `tg_message_links`   | Telegram adapter | chat_id, message_id, item_id                                                                   | Reply-to-add-detail. Core does not know this table                            |
 
 ## Quality, testing and eval
 
@@ -175,12 +175,12 @@ The project's technical depth is in the Turkish understanding engine, and its qu
 
 The project moves in four phases. The agent pipeline only kicks in once the skeleton is ready.
 
-| Phase | Who | How | Output |
-|---|---|---|---|
-| 0. Decisions | Emin and AI | Conversation | PRD, ADRs, `CLAUDE.md` |
-| 1. Skeleton | Emin and a single agent | One interactive session | Green CI, one end-to-end sample feature, pipeline files |
-| 2. Calibration | Pipeline, WIP 1 | Close supervision | Improved agent instructions and CI rules |
-| 3. Normal flow | Pipeline, WIP 2–3 | Via the board | Features |
+| Phase          | Who                     | How                     | Output                                                  |
+| -------------- | ----------------------- | ----------------------- | ------------------------------------------------------- |
+| 0. Decisions   | Emin and AI             | Conversation            | PRD, ADRs, `CLAUDE.md`                                  |
+| 1. Skeleton    | Emin and a single agent | One interactive session | Green CI, one end-to-end sample feature, pipeline files |
+| 2. Calibration | Pipeline, WIP 1         | Close supervision       | Improved agent instructions and CI rules                |
+| 3. Normal flow | Pipeline, WIP 2–3       | Via the board           | Features                                                |
 
 **Pipeline:** Tasks live in GitHub Issues and a GitHub Projects board. Every PR is linked to a task with `Closes #N`. A tester agent writes tests from acceptance criteria, an implementer agent writes code and opens a PR, a reviewer agent approves or requests changes. Agents run under separate GitHub App identities. Risky paths require Emin's approval via `CODEOWNERS`. Full spec: `docs/agent-pipeline.md`.
 
@@ -201,14 +201,14 @@ The project moves in four phases. The agent pipeline only kicks in once the skel
 
 The biggest risk is scope creep and the project being left half-done. The second is a missed reminder destroying the user's trust.
 
-| Risk | Mitigation |
-|---|---|
-| Scope creep | v1 list is fixed. New ideas go to the "later" list |
-| Missed reminder | Durable job queue, duplicate-send guard, monitoring |
-| Misinterpreted relative dates | Full date in the confirmation message, hard cases in the eval set |
-| STT errors | Transcript is stored, corrections go into the eval set |
-| Crowded market | The edge is Turkish understanding quality and follow-up. Target is personal use and technical depth, not companies |
-| Userbot account restrictions (v3) | Live listening stays experimental; web recording stays as an alternative |
+| Risk                              | Mitigation                                                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Scope creep                       | v1 list is fixed. New ideas go to the "later" list                                                                 |
+| Missed reminder                   | Durable job queue, duplicate-send guard, monitoring                                                                |
+| Misinterpreted relative dates     | Full date in the confirmation message, hard cases in the eval set                                                  |
+| STT errors                        | Transcript is stored, corrections go into the eval set                                                             |
+| Crowded market                    | The edge is Turkish understanding quality and follow-up. Target is personal use and technical depth, not companies |
+| Userbot account restrictions (v3) | Live listening stays experimental; web recording stays as an alternative                                           |
 
 **Open decisions**
 - [x] Name: Kâtip (ADR 0003). Bot username still to be checked in BotFather.

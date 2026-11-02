@@ -8,13 +8,13 @@
 
 Each bot is a separate GitHub App, so no extra GitHub accounts or emails are needed. Because identities differ, the "cannot approve your own PR" rule is not a problem.
 
-| Actor | Does | Cannot |
-|---|---|---|
-| Emin (`eminakcil`) | Opens issues, writes acceptance criteria, moves cards to Ready, approves risky paths, resolves `needs-human` | |
-| `eminakcil-tester[bot]` | Writes tests from acceptance criteria, defines any new port interfaces and their fakes, opens the task branch and pushes tests | Change production code other than port interfaces, approve PRs |
-| `eminakcil-implementer[bot]` | Writes code that turns tests green, opens the PR, fixes review feedback | Change test files, approve or merge PRs |
-| `eminakcil-reviewer[bot]` | Compares the diff against acceptance criteria and tests, approves or requests changes | Push code |
-| CI | test, typecheck, lint, mutation threshold, test-guard | |
+| Actor                        | Does                                                                                                                           | Cannot                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| Emin (`eminakcil`)           | Opens issues, writes acceptance criteria, moves cards to Ready, approves risky paths, resolves `needs-human`                   |                                                                |
+| `eminakcil-tester[bot]`      | Writes tests from acceptance criteria, defines any new port interfaces and their fakes, opens the task branch and pushes tests | Change production code other than port interfaces, approve PRs |
+| `eminakcil-implementer[bot]` | Writes code that turns tests green, opens the PR, fixes review feedback                                                        | Change test files, approve or merge PRs                        |
+| `eminakcil-reviewer[bot]`    | Compares the diff against acceptance criteria and tests, approves or requests changes                                          | Push code                                                      |
+| CI                           | test, typecheck, lint, mutation threshold, test-guard                                                                          |                                                                |
 
 No agent merges. When the repository variable `AUTO_MERGE` is `true`, a deterministic step in `implementer.yml` (not the agent) enables `gh pr merge --auto --squash` on the task's PR; GitHub merges once the reviewer approves and CI is green. While `AUTO_MERGE` is `false` (Phase 2), Emin merges.
 
@@ -30,30 +30,30 @@ No agent merges. When the repository variable `AUTO_MERGE` is `true`, a determin
 
 Only **Repository permissions** are used. Organization, Account and Enterprise permissions stay "No access" (exception: org Projects if the repo is in an organization). Webhook is disabled; GitHub Actions handles triggers. Install "Only on this account", on this repo only.
 
-| Permission | tester | implementer | reviewer |
-|---|---|---|---|
-| Metadata | Read | Read | Read |
-| Contents | Read & write | Read & write | Read |
-| Pull requests | Read | Read & write | Read & write |
-| Issues | Read & write | Read & write | Read & write |
-| Checks | Read | Read | Read |
-| Commit statuses | Read | Read | Read |
-| Actions | Read | Read | Read |
-| Workflows | No access | No access | No access |
-| Everything else | No access | No access | No access |
+| Permission      | tester       | implementer  | reviewer     |
+| --------------- | ------------ | ------------ | ------------ |
+| Metadata        | Read         | Read         | Read         |
+| Contents        | Read & write | Read & write | Read         |
+| Pull requests   | Read         | Read & write | Read & write |
+| Issues          | Read & write | Read & write | Read & write |
+| Checks          | Read         | Read         | Read         |
+| Commit statuses | Read         | Read         | Read         |
+| Actions         | Read         | Read         | Read         |
+| Workflows       | No access    | No access    | No access    |
+| Everything else | No access    | No access    | No access    |
 
 `Workflows: No access` deliberately prevents bots from editing `.github/workflows/`. `.pem` files are secrets: never committed.
 
 ## Repo settings
 
-| Setting | Value |
-|---|---|
+| Setting           | Value                                                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
 | Ruleset on `main` | PR required, 1 approval, required checks (test, typecheck, lint, mutation, test-guard), no force push |
-| Code owner review | "Require review from Code Owners" on |
-| Auto-merge | "Allow auto-merge" on |
-| Merge method | Squash only. One commit per task |
-| Merge queue | Enabled when parallel PRs start (Phase 3) |
-| Fork PRs | Workflows from forks require approval |
+| Code owner review | "Require review from Code Owners" on                                                                  |
+| Auto-merge        | "Allow auto-merge" on                                                                                 |
+| Merge method      | Squash only. One commit per task                                                                      |
+| Merge queue       | Enabled when parallel PRs start (Phase 3)                                                             |
+| Fork PRs          | Workflows from forks require approval                                                                 |
 
 **Labels:** `agent:ready`, `agent:tests-ready`, `agent:round-1`, `agent:round-2`, `needs-human`.
 
@@ -63,12 +63,12 @@ Only **Repository permissions** are used. Organization, Account and Enterprise p
 
 Stored in Settings → Secrets and variables → Actions.
 
-| Secret | Source | Used by |
-|---|---|---|
-| `CLAUDE_CODE_OAUTH_TOKEN` | `claude setup-token` locally (or `ANTHROPIC_API_KEY` from Console) | all three workflows |
-| `TESTER_APP_ID`, `TESTER_PRIVATE_KEY` | tester app page, `.pem` contents | tester.yml |
-| `IMPLEMENTER_APP_ID`, `IMPLEMENTER_PRIVATE_KEY` | implementer app page | implementer.yml |
-| `REVIEWER_APP_ID`, `REVIEWER_PRIVATE_KEY` | reviewer app page | reviewer.yml |
+| Secret                                          | Source                                                             | Used by             |
+| ----------------------------------------------- | ------------------------------------------------------------------ | ------------------- |
+| `CLAUDE_CODE_OAUTH_TOKEN`                       | `claude setup-token` locally (or `ANTHROPIC_API_KEY` from Console) | all three workflows |
+| `TESTER_APP_ID`, `TESTER_PRIVATE_KEY`           | tester app page, `.pem` contents                                   | tester.yml          |
+| `IMPLEMENTER_APP_ID`, `IMPLEMENTER_PRIVATE_KEY` | implementer app page                                               | implementer.yml     |
+| `REVIEWER_APP_ID`, `REVIEWER_PRIVATE_KEY`       | reviewer app page                                                  | reviewer.yml        |
 
 Each workflow mints a short-lived app token with `actions/create-github-app-token`. Events created with the default `GITHUB_TOKEN` do not trigger other workflows; events created with app tokens do. This is what lets bots hand work to each other.
 
@@ -164,13 +164,13 @@ Protected by `CODEOWNERS`, so agents cannot change their own rules. Every mistak
 
 Agent instructions are a request; CI is a rule. Critical constraints are enforced by CI and marked as required status checks.
 
-| Check | Prevents | How |
-|---|---|---|
-| test | Code not meeting criteria | All tests pass |
-| typecheck, lint | Type and style errors | `tsc`, Biome |
-| test-guard | Implementer passing by editing tests | Fail if implementer-bot commits touch test paths |
-| mutation | Tests that prove nothing | Stryker on changed files; fail below threshold (start at 70%) |
-| round-limit | Infinite bot loop | A new request-changes while `agent:round-2` is set adds `needs-human` |
+| Check           | Prevents                             | How                                                                   |
+| --------------- | ------------------------------------ | --------------------------------------------------------------------- |
+| test            | Code not meeting criteria            | All tests pass                                                        |
+| typecheck, lint | Type and style errors                | `tsc`, Biome                                                          |
+| test-guard      | Implementer passing by editing tests | Fail if implementer-bot commits touch test paths                      |
+| mutation        | Tests that prove nothing             | Stryker on changed files; fail below threshold (start at 70%)         |
+| round-limit     | Infinite bot loop                    | A new request-changes while `agent:round-2` is set adds `needs-human` |
 
 ## Setup order
 

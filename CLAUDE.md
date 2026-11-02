@@ -50,17 +50,17 @@ apps/web            React + TanStack Router UI
 
 Run from the repo root.
 
-| Command | What it does |
-|---|---|
-| `npm install` | Install all workspaces |
-| `npm run dev` | Run server and web in dev mode |
-| `npm run db:start` | Start Postgres via docker compose |
-| `npm run db:generate` / `npm run db:migrate` | Generate / apply Drizzle migrations |
-| `npm test` | Vitest across all workspaces via turbo |
-| `npm run test:mutation` | Stryker on `packages/core` |
-| `npm run check-types` | `tsc --noEmit` across workspaces |
-| `npm run lint` | Biome check without writing (what CI runs) |
-| `npm run check` | Biome check with auto-fix |
+| Command                                      | What it does                               |
+| -------------------------------------------- | ------------------------------------------ |
+| `npm install`                                | Install all workspaces                     |
+| `npm run dev`                                | Run server and web in dev mode             |
+| `npm run db:start`                           | Start Postgres via docker compose          |
+| `npm run db:generate` / `npm run db:migrate` | Generate / apply Drizzle migrations        |
+| `npm test`                                   | Vitest across all workspaces via turbo     |
+| `npm run test:mutation`                      | Stryker on `packages/core`                 |
+| `npm run check-types`                        | `tsc --noEmit` across workspaces           |
+| `npm run lint`                               | Biome check without writing (what CI runs) |
+| `npm run check`                              | Biome check with auto-fix                  |
 
 `npm test`, `npm run test:mutation` and `npm run lint` are added in Phase 1.
 
