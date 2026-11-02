@@ -1,3 +1,3 @@
-/src/auth/      @eminakcil
-/migrations/    @eminakcil
-/.github/       @eminakcil
+/packages/auth/               @eminakcil
+/packages/db/src/migrations/  @eminakcil
+/.github/                     @eminakcil
