@@ -74,9 +74,17 @@ export interface Repositories {
 	reminders: ReminderRepository;
 }
 
-/** Runs `work` atomically: all repository writes inside commit or none do. */
+/** Repositories plus the job queue, all bound to one database transaction. */
+export interface TransactionContext extends Repositories {
+	jobs: JobScheduler;
+}
+
+/**
+ * Runs `work` atomically: repository writes and enqueued jobs inside it commit
+ * together or not at all (ADR 0008).
+ */
 export interface UnitOfWork {
-	run<T>(work: (repos: Repositories) => Promise<T>): Promise<T>;
+	run<T>(work: (tx: TransactionContext) => Promise<T>): Promise<T>;
 }
 
 /** Durable job queue for reminder delivery (ADR 0008). */

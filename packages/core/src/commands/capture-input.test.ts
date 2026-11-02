@@ -7,20 +7,20 @@
 // AC4  A "created" item event is recorded at the clock's time.
 // AC5  Default reminders: event 30 min before start, task 09:00 local on the
 //      due date, reminder at its time, note none. Past reminders are skipped.
-// AC6  Each reminder is scheduled with the job queue and its job id stored.
+// AC6  Each reminder's job is enqueued in the same transaction as the rows,
+//      and the reminder row carries its job id.
 // AC7  The input records the raw parse result, validity and model version.
 // AC8  Invalid parser output is retried once; a valid retry is used.
 // AC9  Two invalid outputs: nothing is created and the user is asked again.
 // AC10 A task with a date but no time is an all-day item.
 // AC11 Unknown users get no input, item or parser call.
 // AC12 Item types not supported yet (recurring, annual) create no item.
-// AC13 Item, event and reminders are written atomically.
+// AC13 Item, event, reminders and jobs are written atomically.
 
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
 	FakeClock,
-	FakeJobScheduler,
 	InMemoryStore,
 	ScriptedParser,
 	SequentialIds,
@@ -42,7 +42,6 @@ const validEvent = {
 let clock: FakeClock;
 let store: InMemoryStore;
 let parser: ScriptedParser;
-let jobs: FakeJobScheduler;
 
 function capture(
 	text = "Haftaya perşembe akşam 7'de yayın var, mutlaka izlemeliyim.",
@@ -53,7 +52,6 @@ function capture(
 		parser,
 		uow: store,
 		repos: store.repos,
-		jobs,
 	});
 	return run({ userId: "u1", channel: "chat", text });
 }
@@ -74,7 +72,6 @@ beforeEach(() => {
 		timezone: "Europe/Istanbul",
 	});
 	parser = new ScriptedParser("fake-model-1");
-	jobs = new FakeJobScheduler();
 });
 
 describe("CaptureInput", () => {
@@ -244,7 +241,7 @@ describe("CaptureInput", () => {
 			allDay: false,
 		});
 		expect(store.state.reminders).toEqual([]);
-		expect(jobs.scheduled).toEqual([]);
+		expect(store.state.jobs).toEqual([]);
 	});
 
 	it("AC5: skips a reminder whose time has already passed", async () => {
@@ -268,18 +265,18 @@ describe("CaptureInput", () => {
 		]);
 	});
 
-	it("AC6: schedules each reminder by id and fire time and stores the job id", async () => {
+	it("AC6: enqueues each reminder by id and fire time and stores the job id on the row", async () => {
 		parser.willReturn(validEvent);
 		const result = expectCaptured(await capture());
 
 		const reminder = store.state.reminders[0];
-		expect(jobs.scheduled).toHaveLength(1);
-		expect(jobs.scheduled[0]?.reminderId).toBe(reminder?.id);
-		expect(jobs.scheduled[0]?.fireAt.toISOString()).toBe(
+		expect(store.state.jobs).toHaveLength(1);
+		expect(store.state.jobs[0]?.reminderId).toBe(reminder?.id);
+		expect(store.state.jobs[0]?.fireAt.toISOString()).toBe(
 			"2026-11-13T15:30:00.000Z",
 		);
-		expect(reminder?.jobId).toBe(jobs.scheduled[0]?.jobId);
-		expect(result.reminders[0]?.jobId).toBe(jobs.scheduled[0]?.jobId);
+		expect(reminder?.jobId).toBe(store.state.jobs[0]?.jobId);
+		expect(result.reminders[0]?.jobId).toBe(store.state.jobs[0]?.jobId);
 	});
 
 	it("AC7: records the raw parse result, validity and model version on the input", async () => {
@@ -319,7 +316,7 @@ describe("CaptureInput", () => {
 		expect(store.state.items).toEqual([]);
 		expect(store.state.reminders).toEqual([]);
 		expect(store.state.itemEvents).toEqual([]);
-		expect(jobs.scheduled).toEqual([]);
+		expect(store.state.jobs).toEqual([]);
 		expect(store.state.inputs[0]).toMatchObject({
 			parseResult: second,
 			parseValid: false,
@@ -397,7 +394,6 @@ describe("CaptureInput", () => {
 			parser,
 			uow: store,
 			repos: store.repos,
-			jobs,
 		});
 		const result = await run({ userId: "nobody", channel: "chat", text: "x" });
 
@@ -435,8 +431,21 @@ describe("CaptureInput", () => {
 		expect(store.state.items).toEqual([]);
 		expect(store.state.itemEvents).toEqual([]);
 		expect(store.state.reminders).toEqual([]);
-		expect(jobs.scheduled).toEqual([]);
+		expect(store.state.jobs).toEqual([]);
 		// The raw input survives for the eval set.
+		expect(store.state.inputs).toHaveLength(1);
+	});
+
+	it("AC13: writes nothing when enqueuing a reminder's job fails", async () => {
+		parser.willReturn(validEvent);
+		store.failNextSchedule = true;
+
+		await expect(capture()).rejects.toThrow();
+
+		expect(store.state.items).toEqual([]);
+		expect(store.state.itemEvents).toEqual([]);
+		expect(store.state.reminders).toEqual([]);
+		expect(store.state.jobs).toEqual([]);
 		expect(store.state.inputs).toHaveLength(1);
 	});
 });

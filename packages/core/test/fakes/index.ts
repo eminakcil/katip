@@ -17,6 +17,7 @@ import type {
 	ParseRequest,
 	ParseResponse,
 	Repositories,
+	TransactionContext,
 	UnitOfWork,
 } from "../../src/ports";
 
@@ -72,21 +73,33 @@ export class ScriptedParser implements InputParser {
 	}
 }
 
+export interface FakeJob {
+	jobId: string;
+	reminderId: string;
+	fireAt: Date;
+	status: "queued" | "cancelled";
+}
+
 interface StoreState {
 	users: User[];
 	inputs: Input[];
 	items: Item[];
 	itemEvents: ItemEvent[];
 	reminders: Reminder[];
+	/** Jobs enqueued through the transactional JobScheduler. */
+	jobs: FakeJob[];
 }
+
+type Table = Exclude<keyof StoreState, "jobs">;
 
 function cloneState(state: StoreState): StoreState {
 	return structuredClone(state);
 }
 
 /**
- * In-memory repositories plus a UnitOfWork with real rollback semantics:
- * if the work throws, every write made inside it is discarded.
+ * In-memory repositories, job queue and a UnitOfWork with real rollback
+ * semantics: if the work throws, every write made inside it is discarded,
+ * including enqueued jobs (mirrors pg-boss sending inside the transaction).
  */
 export class InMemoryStore implements UnitOfWork {
 	state: StoreState = {
@@ -95,10 +108,15 @@ export class InMemoryStore implements UnitOfWork {
 		items: [],
 		itemEvents: [],
 		reminders: [],
+		jobs: [],
 	};
 
 	/** Set to make the next insert into that table throw (simulates a DB failure). */
-	failNextInsertInto: keyof StoreState | null = null;
+	failNextInsertInto: Table | null = null;
+	/** Set to make the next job enqueue throw. */
+	failNextSchedule = false;
+
+	private jobCounter = 0;
 
 	readonly repos: Repositories = {
 		users: {
@@ -124,51 +142,49 @@ export class InMemoryStore implements UnitOfWork {
 		},
 	};
 
+	private readonly jobs: JobScheduler = {
+		scheduleReminder: async ({ reminderId, fireAt }) => {
+			if (this.failNextSchedule) {
+				this.failNextSchedule = false;
+				throw new Error("simulated job queue failure");
+			}
+			this.jobCounter += 1;
+			const jobId = `job-${this.jobCounter}`;
+			this.state.jobs.push({
+				jobId,
+				reminderId,
+				fireAt: new Date(fireAt),
+				status: "queued",
+			});
+			return jobId;
+		},
+		cancel: async (jobId) => {
+			const job = this.state.jobs.find((j) => j.jobId === jobId);
+			if (job) job.status = "cancelled";
+		},
+	};
+
 	addUser(user: User): this {
 		this.state.users.push(user);
 		return this;
 	}
 
-	async run<T>(work: (repos: Repositories) => Promise<T>): Promise<T> {
+	async run<T>(work: (tx: TransactionContext) => Promise<T>): Promise<T> {
 		const snapshot = cloneState(this.state);
 		try {
-			return await work(this.repos);
+			return await work({ ...this.repos, jobs: this.jobs });
 		} catch (error) {
 			this.state = snapshot;
 			throw error;
 		}
 	}
 
-	private insert<K extends keyof StoreState>(
-		table: K,
-		row: StoreState[K][number],
-	): void {
+	private insert<K extends Table>(table: K, row: StoreState[K][number]): void {
 		if (this.failNextInsertInto === table) {
 			this.failNextInsertInto = null;
 			throw new Error(`simulated insert failure on ${table}`);
 		}
 		(this.state[table] as StoreState[K][number][]).push(structuredClone(row));
-	}
-}
-
-export class FakeJobScheduler implements JobScheduler {
-	readonly scheduled: { jobId: string; reminderId: string; fireAt: Date }[] =
-		[];
-	readonly cancelled: string[] = [];
-	private counter = 0;
-
-	async scheduleReminder(job: {
-		reminderId: string;
-		fireAt: Date;
-	}): Promise<string> {
-		this.counter += 1;
-		const jobId = `job-${this.counter}`;
-		this.scheduled.push({ jobId, ...job });
-		return jobId;
-	}
-
-	async cancel(jobId: string): Promise<void> {
-		this.cancelled.push(jobId);
 	}
 }
 
