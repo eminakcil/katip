@@ -12,7 +12,8 @@
 	},
 	"dependencies": {
 		"@katip/core": "*",
-		"grammy": "^1.46.0"
+		"grammy": "^1.46.0",
+		"hono": "^4.13.16"
 	},
 	"devDependencies": {
 		"@katip/config": "*",
