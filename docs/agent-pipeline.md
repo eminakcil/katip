@@ -150,7 +150,7 @@ Protected by `CODEOWNERS`, so agents cannot change their own rules. Every mistak
 - Read the issue, criteria and the tester's tests.
 - Turn tests green without touching test files. If a test, fake or port interface looks wrong or missing, do not work around it: explain on the issue and add `needs-human`.
 - Open a PR containing `Closes #<no>` with a criteria table in the description. Never merge or enable auto-merge; the workflow does that.
-- On review feedback, make only the requested changes. Bump the round label.
+- On review feedback, make only the requested changes. Round labels are managed by `round-limit.yml`, not by the agent.
 - Rebase if main moved. If a conflict cannot be resolved, add `needs-human`.
 
 **reviewer.md**
@@ -164,13 +164,13 @@ Protected by `CODEOWNERS`, so agents cannot change their own rules. Every mistak
 
 Agent instructions are a request; CI is a rule. Critical constraints are enforced by CI and marked as required status checks.
 
-| Check           | Prevents                             | How                                                                                          |
-| --------------- | ------------------------------------ | -------------------------------------------------------------------------------------------- |
-| test            | Code not meeting criteria            | All tests pass                                                                               |
-| typecheck, lint | Type and style errors                | `tsc`, Biome                                                                                 |
-| test-guard      | Implementer passing by editing tests | On implementer PRs, fail if any commit touching test paths is not authored by the tester bot |
-| mutation        | Tests that prove nothing             | Stryker on changed files; fail below threshold (start at 70%)                                |
-| round-limit     | Infinite bot loop                    | A new request-changes while `agent:round-2` is set adds `needs-human`                        |
+| Check           | Prevents                             | How                                                                                                                                                        |
+| --------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| test            | Code not meeting criteria            | All tests pass                                                                                                                                             |
+| typecheck, lint | Type and style errors                | `tsc`, Biome                                                                                                                                               |
+| test-guard      | Implementer passing by editing tests | On implementer PRs, fail if any commit touching test paths is not authored by the tester bot                                                               |
+| mutation        | Tests that prove nothing             | Stryker on changed files; fail below threshold (start at 70%)                                                                                              |
+| round-limit     | Infinite bot loop                    | `round-limit.yml` bumps `agent:round-1` → `agent:round-2`; a third request-changes adds `needs-human`, and the implementer workflow skips after two rounds |
 
 ## Setup order
 
