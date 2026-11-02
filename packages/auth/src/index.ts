@@ -7,8 +7,11 @@ export type AuthConfig = {
 	BETTER_AUTH_URL: string;
 	BETTER_AUTH_SECRET: string;
 	CORS_ORIGIN: string;
+	GOOGLE_CLIENT_ID: string;
+	GOOGLE_CLIENT_SECRET: string;
 };
 
+// Google is the only sign-in method (ADR 0004). No email/password.
 export function createAuth(
 	env: AuthConfig,
 	database: Database,
@@ -20,7 +23,24 @@ export function createAuth(
 			schema,
 		}),
 		trustedOrigins: [env.CORS_ORIGIN, ...desktopOrigins],
-		emailAndPassword: { enabled: true },
+		emailAndPassword: { enabled: false },
+		socialProviders: {
+			google: {
+				clientId: env.GOOGLE_CLIENT_ID,
+				clientSecret: env.GOOGLE_CLIENT_SECRET,
+			},
+		},
+		user: {
+			additionalFields: {
+				// IANA timezone used to resolve and render dates (ADR 0001).
+				timezone: {
+					type: "string",
+					required: false,
+					defaultValue: "Europe/Istanbul",
+					input: false,
+				},
+			},
+		},
 		secret: env.BETTER_AUTH_SECRET,
 		baseURL: env.BETTER_AUTH_URL,
 		advanced: {
