@@ -1,0 +1,22 @@
+{
+	"name": "@katip/core",
+	"type": "module",
+	"private": true,
+	"exports": {
+		".": "./src/index.ts",
+		"./test/fakes": "./test/fakes/index.ts"
+	},
+	"scripts": {
+		"check-types": "tsc --noEmit",
+		"test": "vitest run --passWithNoTests",
+		"test:mutation": "stryker run"
+	},
+	"dependencies": {
+		"@date-fns/tz": "^1.5.0",
+		"zod": "^4.5.4"
+	},
+	"devDependencies": {
+		"@katip/config": "*",
+		"typescript": "^6.0.3"
+	}
+}
