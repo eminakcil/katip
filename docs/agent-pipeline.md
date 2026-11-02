@@ -57,7 +57,7 @@ Only **Repository permissions** are used. Organization, Account and Enterprise p
 
 **Labels:** `agent:ready`, `agent:tests-ready`, `agent:round-1`, `agent:round-2`, `needs-human`.
 
-**Projects board:** Backlog, Ready, In Progress, In Review, Needs Human, Done. GitHub Apps may not be able to access a board owned by a personal account (open decision: map columns to labels, or use a free organization).
+**Projects board:** Backlog, Ready, In Progress, In Review, Needs Human, Done. The repo is on a personal account, where GitHub Apps cannot move board cards, so labels are the pipeline's state machine and the board is Emin's view only, kept in sync by GitHub's built-in automations (ADR 0009).
 
 ## Secrets
 
@@ -109,7 +109,7 @@ jobs:
             Event: ${{ github.event_name }}
             Issue: #${{ github.event.issue.number }}  PR: #${{ github.event.pull_request.number }}
           claude_args: >-
-            --model claude-opus-5-5
+            --model claude-sonnet-5-5
             --max-turns 60
             --allowedTools "Read,Edit,Write,Grep,Glob,Bash(git:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh pr edit:*),Bash(gh pr comment:*),Bash(gh pr list:*),Bash(gh issue:*),Bash(npm test:*),Bash(npm run:*)"
       # Deterministic: the agent cannot merge; this step decides.
@@ -126,7 +126,7 @@ jobs:
           gh pr merge "$PR" --auto --squash
 ```
 
-Tester and reviewer use the same skeleton, differing only in trigger, app secrets, instruction file and `--allowedTools`. The reviewer has no `Edit`/`Write`.
+Tester and reviewer use the same skeleton, differing only in trigger, app secrets, instruction file, `--model` (`claude-opus-5-5` for both, ADR 0009) and `--allowedTools`, and they have no auto-merge step. The reviewer has no `Edit`/`Write`.
 
 ## Agent instruction files (`.github/claude/`)
 
