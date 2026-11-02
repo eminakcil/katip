@@ -12,17 +12,17 @@ Each bot is a separate GitHub App, so no extra GitHub accounts or emails are nee
 |---|---|---|
 | Emin (`eminakcil`) | Opens issues, writes acceptance criteria, moves cards to Ready, approves risky paths, resolves `needs-human` | |
 | `eminakcil-tester[bot]` | Writes tests from acceptance criteria, opens the task branch and pushes tests | Change production code, approve PRs |
-| `eminakcil-implementer[bot]` | Writes code that turns tests green, opens the PR, enables auto-merge, fixes review feedback | Change test files, approve PRs |
+| `eminakcil-implementer[bot]` | Writes code that turns tests green, opens the PR, fixes review feedback | Change test files, approve or merge PRs |
 | `eminakcil-reviewer[bot]` | Compares the diff against acceptance criteria and tests, approves or requests changes | Push code |
 | CI | test, typecheck, lint, mutation threshold, test-guard | |
 
-The reviewer does not merge. The implementer enables auto-merge when opening the PR; GitHub merges once the reviewer approves and CI is green.
+No agent merges. When the repository variable `AUTO_MERGE` is `true`, a deterministic step in `implementer.yml` (not the agent) enables `gh pr merge --auto --squash` on the task's PR; GitHub merges once the reviewer approves and CI is green. While `AUTO_MERGE` is `false` (Phase 2), Emin merges.
 
 ## Flow
 
 1. Emin opens an issue and adds `agent:ready`.
 2. **tester.yml** (trigger: `agent:ready` added) opens `task/<no>-<short-name>` from main, writes failing tests, pushes, adds `agent:tests-ready`.
-3. **implementer.yml** (trigger: `agent:tests-ready` added, or a `changes_requested` review on the implementer's PR) writes code without touching tests, opens a PR with `Closes #<no>`, enables `gh pr merge --auto --squash`.
+3. **implementer.yml** (trigger: `agent:tests-ready` added, or a `changes_requested` review on the implementer's PR) writes code without touching tests and opens a PR with `Closes #<no>`. A following workflow step enables auto-merge if `vars.AUTO_MERGE == 'true'`.
 4. **reviewer.yml** (trigger: implementer's PR opened or updated) approves or requests changes.
 5. After two review rounds without resolution, the task gets `needs-human`.
 
@@ -111,7 +111,19 @@ jobs:
           claude_args: >-
             --model claude-opus-5-5
             --max-turns 60
-            --allowedTools "Read,Edit,Write,Grep,Glob,Bash(git:*),Bash(gh pr:*),Bash(gh issue:*),Bash(npm test:*),Bash(npm run:*)"
+            --allowedTools "Read,Edit,Write,Grep,Glob,Bash(git:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh pr edit:*),Bash(gh pr comment:*),Bash(gh pr list:*),Bash(gh issue:*),Bash(npm test:*),Bash(npm run:*)"
+      # Deterministic: the agent cannot merge; this step decides.
+      - name: Enable auto-merge
+        if: vars.AUTO_MERGE == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          PR="${{ github.event.pull_request.number }}"
+          if [ -z "$PR" ]; then
+            PR=$(gh pr list --state open --json number,headRefName \n              --jq '[.[] | select(.headRefName | startswith("task/${{ github.event.issue.number }}-"))][0].number // empty')
+          fi
+          if [ -z "$PR" ]; then echo "No open PR for this task; skipping auto-merge."; exit 0; fi
+          gh pr merge "$PR" --auto --squash
 ```
 
 Tester and reviewer use the same skeleton, differing only in trigger, app secrets, instruction file and `--allowedTools`. The reviewer has no `Edit`/`Write`.
@@ -136,7 +148,7 @@ Protected by `CODEOWNERS`, so agents cannot change their own rules. Every mistak
 **implementer.md**
 - Read the issue, criteria and the tester's tests.
 - Turn tests green without touching test files. If a test looks wrong, do not fix it: explain on the issue and add `needs-human`.
-- Open a PR containing `Closes #<no>` with a criteria table in the description; enable `gh pr merge --auto --squash`.
+- Open a PR containing `Closes #<no>` with a criteria table in the description. Never merge or enable auto-merge; the workflow does that.
 - On review feedback, make only the requested changes. Bump the round label.
 - Rebase if main moved. If a conflict cannot be resolved, add `needs-human`.
 

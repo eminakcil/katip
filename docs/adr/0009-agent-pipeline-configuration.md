@@ -12,7 +12,7 @@
 1. **Account:** The repo stays on the personal account (`eminakcil/katip`). Labels (`agent:ready`, `agent:tests-ready`, `agent:round-1`, `agent:round-2`, `needs-human`) are the pipeline's state machine. A Projects board, if used, is the owner's view only, driven by GitHub's built-in automations; agents do not touch it.
 2. **Models:** tester and reviewer use `claude-opus-5-5`; implementer uses `claude-sonnet-5-5` (its work is constrained by tests). Each is one line in its workflow.
 3. **Claude auth:** `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` (subscription), shared by all three workflows.
-4. **Auto-merge:** The implementer enables `gh pr merge --auto --squash` only when the repository variable `AUTO_MERGE` is `true`. It starts as `false`: in Phase 2 the owner merges every PR. Flipping the variable in Phase 3 needs no workflow change.
+4. **Auto-merge:** Enabled by a deterministic step in `implementer.yml`, not by the agent: after the Claude step, a step guarded by `if: vars.AUTO_MERGE == 'true'` finds the task's PR and runs `gh pr merge --auto --squash`. The implementer agent's allowed tools do not include `gh pr merge`. `AUTO_MERGE` starts as `false`: in Phase 2 the owner merges every PR. Flipping the variable in Phase 3 needs no workflow change.
 5. **Mutation testing:** Stryker on `packages/core` only, `break` threshold 70%. Incremental (changed files) on PRs, full on `main`. Raise to 80% after calibration if comfortably met.
 
 ## Consequences
