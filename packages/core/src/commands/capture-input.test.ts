@@ -30,7 +30,7 @@ import {
 } from "../../test/fakes";
 import { type CaptureInputResult, createCaptureInput } from "./capture-input";
 
-// Thursday 6 Nov 2026, 12:00 in Istanbul (UTC+3).
+// Friday 6 Nov 2026, 12:00 in Istanbul (UTC+3).
 const NOW = "2026-11-06T09:00:00.000Z";
 
 const validEvent = {
