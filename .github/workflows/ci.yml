@@ -114,7 +114,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Stryker (changed core files on PRs, all of core on main)
-        run: .github/scripts/mutation.sh ${{ github.event.pull_request.base.sha }}
+        run: bash .github/scripts/mutation.sh ${{ github.event.pull_request.base.sha }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
