@@ -32,6 +32,16 @@ export type Channel = string;
 
 export type InputKind = "text" | "audio";
 
+/** One call to the parser, kept for the eval set whether it worked or not. */
+export interface ParseAttempt {
+	/** Raw output; null when the parser call failed. */
+	raw: unknown;
+	valid: boolean;
+	modelVersion: string | null;
+	/** Failure message when the parser call threw (network, 5xx, timeout). */
+	error: string | null;
+}
+
 export interface Input {
 	id: string;
 	userId: UserId;
@@ -43,6 +53,8 @@ export interface Input {
 	parseResult: unknown;
 	/** Whether `parseResult` passed schema validation. */
 	parseValid: boolean | null;
+	/** Every parser attempt in order, including invalid and failed ones. */
+	parseAttempts: ParseAttempt[];
 	modelVersion: string | null;
 	corrected: boolean;
 	createdAt: Date;

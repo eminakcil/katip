@@ -16,6 +16,9 @@
 // AC11 Unknown users get no input, item or parser call.
 // AC12 Item types not supported yet (recurring, annual) create no item.
 // AC13 Item, event, reminders and jobs are written atomically.
+// AC14 If the parser call fails (network, 5xx, timeout), the input is kept and
+//      the result is parser_unavailable; no further attempt is made.
+// AC15 Every parser attempt is stored on the input, in order.
 
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -93,7 +96,8 @@ describe("CaptureInput", () => {
 	});
 
 	it("AC1: keeps the raw input when the parser throws", async () => {
-		await expect(capture("bir şey")).rejects.toThrow();
+		parser.willThrow(new Error("timeout"));
+		await capture("bir şey");
 
 		expect(store.state.inputs).toHaveLength(1);
 		expect(store.state.inputs[0]?.rawText).toBe("bir şey");
@@ -447,5 +451,120 @@ describe("CaptureInput", () => {
 		expect(store.state.reminders).toEqual([]);
 		expect(store.state.jobs).toEqual([]);
 		expect(store.state.inputs).toHaveLength(1);
+	});
+
+	it("AC14: returns parser_unavailable instead of throwing when the parser fails", async () => {
+		parser
+			.willThrow(new Error("503 Service Unavailable"))
+			.willReturn(validEvent);
+		const result = await capture();
+
+		expect(result).toEqual({
+			kind: "parser_unavailable",
+			inputId: store.state.inputs[0]?.id,
+		});
+		expect(parser.requests).toHaveLength(1);
+		expect(store.state.items).toEqual([]);
+		expect(store.state.reminders).toEqual([]);
+		expect(store.state.jobs).toEqual([]);
+		expect(store.state.inputs[0]).toMatchObject({
+			rawText: "Haftaya perşembe akşam 7'de yayın var, mutlaka izlemeliyim.",
+			parseResult: null,
+			parseValid: false,
+			modelVersion: null,
+		});
+	});
+
+	it("AC14: returns parser_unavailable when the retry fails after invalid output", async () => {
+		parser
+			.willReturn({ ...validEvent, time: "25:00" })
+			.willThrow(new Error("timeout"));
+		const result = await capture();
+
+		expect(result.kind).toBe("parser_unavailable");
+		expect(store.state.items).toEqual([]);
+	});
+
+	it("AC15: stores a single successful attempt", async () => {
+		parser.willReturn(validEvent);
+		await capture();
+
+		expect(store.state.inputs[0]?.parseAttempts).toEqual([
+			{
+				raw: validEvent,
+				valid: true,
+				modelVersion: "fake-model-1",
+				error: null,
+			},
+		]);
+	});
+
+	it("AC15: stores the invalid attempt and the valid retry in order", async () => {
+		const invalid = { ...validEvent, scope: "family" };
+		parser.willReturn(invalid, validEvent);
+		await capture();
+
+		expect(store.state.inputs[0]?.parseAttempts).toEqual([
+			{ raw: invalid, valid: false, modelVersion: "fake-model-1", error: null },
+			{
+				raw: validEvent,
+				valid: true,
+				modelVersion: "fake-model-1",
+				error: null,
+			},
+		]);
+	});
+
+	it("AC15: stores both invalid attempts when the user is asked again", async () => {
+		parser.willReturn("garbage", { type: "event" });
+		await capture();
+
+		expect(store.state.inputs[0]?.parseAttempts).toEqual([
+			{
+				raw: "garbage",
+				valid: false,
+				modelVersion: "fake-model-1",
+				error: null,
+			},
+			{
+				raw: { type: "event" },
+				valid: false,
+				modelVersion: "fake-model-1",
+				error: null,
+			},
+		]);
+	});
+
+	it("AC15: stores a failed call with its error message", async () => {
+		parser.willReturn("garbage").willThrow(new Error("timeout after 10s"));
+		await capture();
+
+		expect(store.state.inputs[0]?.parseAttempts).toEqual([
+			{
+				raw: "garbage",
+				valid: false,
+				modelVersion: "fake-model-1",
+				error: null,
+			},
+			{
+				raw: null,
+				valid: false,
+				modelVersion: null,
+				error: "timeout after 10s",
+			},
+		]);
+	});
+
+	it("AC15: starts with no attempts before the parser is called", async () => {
+		parser.willReturn(validEvent);
+		const inserted: unknown[] = [];
+		const insert = store.repos.inputs.insert;
+		store.repos.inputs.insert = async (input) => {
+			inserted.push(structuredClone(input.parseAttempts));
+			await insert(input);
+		};
+		await capture();
+
+		expect(inserted).toEqual([[]]);
 	});
 });

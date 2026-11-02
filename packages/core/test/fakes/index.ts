@@ -48,10 +48,10 @@ export class SequentialIds implements IdGenerator {
 	}
 }
 
-/** Returns queued responses in order; throws when the script runs out. */
+/** Returns queued responses (or errors) in order; throws when the script runs out. */
 export class ScriptedParser implements InputParser {
 	readonly requests: ParseRequest[] = [];
-	private readonly queue: ParseResponse[] = [];
+	private readonly queue: (ParseResponse | Error)[] = [];
 
 	constructor(private readonly modelVersion = "fake-model-1") {}
 
@@ -63,12 +63,19 @@ export class ScriptedParser implements InputParser {
 		return this;
 	}
 
+	/** Queue a failure (network error, 5xx, timeout). */
+	willThrow(error: Error): this {
+		this.queue.push(error);
+		return this;
+	}
+
 	async parse(request: ParseRequest): Promise<ParseResponse> {
 		this.requests.push(request);
 		const next = this.queue.shift();
 		if (!next) {
 			throw new Error("ScriptedParser: no response queued");
 		}
+		if (next instanceof Error) throw next;
 		return next;
 	}
 }

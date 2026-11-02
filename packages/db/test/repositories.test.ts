@@ -27,6 +27,7 @@ function anInput(overrides: Partial<Input> = {}): Input {
 		transcript: null,
 		parseResult: null,
 		parseValid: null,
+		parseAttempts: [],
 		modelVersion: null,
 		corrected: false,
 		createdAt: T0,
@@ -84,6 +85,15 @@ describe("Drizzle repositories", () => {
 			...input,
 			parseResult: { type: "event", title: "Yayın izle" },
 			parseValid: true,
+			parseAttempts: [
+				{
+					raw: "garbage",
+					valid: false,
+					modelVersion: "fake-model-1",
+					error: null,
+				},
+				{ raw: null, valid: false, modelVersion: null, error: "timeout" },
+			],
 			modelVersion: "fake-model-1",
 		});
 
@@ -91,6 +101,15 @@ describe("Drizzle repositories", () => {
 		expect(row?.parseResult).toEqual({ type: "event", title: "Yayın izle" });
 		expect(row?.parseValid).toBe(true);
 		expect(row?.modelVersion).toBe("fake-model-1");
+		expect(row?.parseAttempts).toEqual([
+			{
+				raw: "garbage",
+				valid: false,
+				modelVersion: "fake-model-1",
+				error: null,
+			},
+			{ raw: null, valid: false, modelVersion: null, error: "timeout" },
+		]);
 	});
 
 	it("stores instants as UTC timestamptz without shifting them", async () => {
