@@ -38,6 +38,7 @@ apps/web            React + TanStack Router UI
 
 - Tests are written **from acceptance criteria, before the code**. Each test name says which criterion it covers, e.g. `it("AC2: echoes the full date in Turkish", …)`.
 - **Whoever implements a change does not edit tests.** Test paths are `**/*.test.ts` and `**/test/**` (fixtures and fakes live in `test/` folders). If a test looks wrong, stop and raise it; do not change it. CI `test-guard` enforces this for the implementer bot.
+- **The tester owns port fakes and port interfaces.** Because fakes live under `test/`, the implementer cannot add one. So when acceptance criteria imply a new port (or a new method on one), the tester defines the interface in `packages/core/src/ports/` (types only, no implementation) and its in-memory fake under `packages/core/test/fakes/`, in the same change as the tests. If the implementer finds a port missing or wrong, it stops and raises it instead of working around it.
 - Core tests use in-memory fakes for every port and a **fake clock**. No real time (`Date.now()`, `new Date()` without arguments) in core; read time from the `Clock` port.
 - No real LLM, STT, Telegram or network calls in core tests. The fake parser returns canned outputs, including invalid ones, to exercise schema validation.
 - Adapter tests may use Postgres (via docker compose) but never call external services.

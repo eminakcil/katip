@@ -11,7 +11,7 @@ Each bot is a separate GitHub App, so no extra GitHub accounts or emails are nee
 | Actor | Does | Cannot |
 |---|---|---|
 | Emin (`eminakcil`) | Opens issues, writes acceptance criteria, moves cards to Ready, approves risky paths, resolves `needs-human` | |
-| `eminakcil-tester[bot]` | Writes tests from acceptance criteria, opens the task branch and pushes tests | Change production code, approve PRs |
+| `eminakcil-tester[bot]` | Writes tests from acceptance criteria, defines any new port interfaces and their fakes, opens the task branch and pushes tests | Change production code other than port interfaces, approve PRs |
 | `eminakcil-implementer[bot]` | Writes code that turns tests green, opens the PR, fixes review feedback | Change test files, approve or merge PRs |
 | `eminakcil-reviewer[bot]` | Compares the diff against acceptance criteria and tests, approves or requests changes | Push code |
 | CI | test, typecheck, lint, mutation threshold, test-guard | |
@@ -143,11 +143,12 @@ Protected by `CODEOWNERS`, so agents cannot change their own rules. Every mistak
 - Open `task/<no>-<short-name>` from main.
 - At least one test per acceptance criterion; the test name says which criterion it covers.
 - Tests must be red now. A passing test proves nothing.
-- Touch only test files and fixtures. Push, add `agent:tests-ready`.
+- Own port fakes and port interfaces: if the criteria imply a new port or port method, define the interface in `packages/core/src/ports/` (types only) and its fake under `packages/core/test/fakes/`.
+- Otherwise touch only test files and fixtures. Push, add `agent:tests-ready`.
 
 **implementer.md**
 - Read the issue, criteria and the tester's tests.
-- Turn tests green without touching test files. If a test looks wrong, do not fix it: explain on the issue and add `needs-human`.
+- Turn tests green without touching test files. If a test, fake or port interface looks wrong or missing, do not work around it: explain on the issue and add `needs-human`.
 - Open a PR containing `Closes #<no>` with a criteria table in the description. Never merge or enable auto-merge; the workflow does that.
 - On review feedback, make only the requested changes. Bump the round label.
 - Rebase if main moved. If a conflict cannot be resolved, add `needs-human`.
