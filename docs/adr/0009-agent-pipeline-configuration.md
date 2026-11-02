@@ -15,6 +15,9 @@
 4. **Auto-merge:** Enabled by a deterministic step in `implementer.yml`, not by the agent: after the Claude step, a step guarded by `if: vars.AUTO_MERGE == 'true'` finds the task's PR and runs `gh pr merge --auto --squash`. The implementer agent's allowed tools do not include `gh pr merge`. `AUTO_MERGE` starts as `false`: in Phase 2 the owner merges every PR. Flipping the variable in Phase 3 needs no workflow change.
 5. **Mutation testing:** Stryker on `packages/core` only, `break` threshold 70%. Incremental (changed files) on PRs, full on `main`. Raise to 80% after calibration if comfortably met.
 
+6. **Test integrity:** the tester workflow freezes the tests with a `tests-frozen` commit status (only the tester app has `Commit statuses: write`). On implementer PRs, `test-guard` requires changed test paths to equal that commit, rejects changes to CI, lint and mutation config, and runs from the base branch. Task branches are merged with `main`, never rebased.
+7. **Plan limits:** the repo is private on GitHub Free, where rulesets and branch protection are unavailable. Until it moves to GitHub Pro or becomes public, CI checks and CODEOWNERS are advisory: the owner merges by hand after confirming every check is green, and `AUTO_MERGE` stays `false` (auto-merge needs branch protection).
+
 ## Consequences
 
 - No repo transfer; the URL stays stable. If board automation by apps becomes necessary, moving to a free organization is a new ADR.

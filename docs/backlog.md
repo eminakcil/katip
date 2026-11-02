@@ -7,7 +7,6 @@ Candidate tasks, roughly in priority order. Each becomes a GitHub issue with acc
 ### Test and pipeline hardening
 
 - **Tester follow-up: tighten parser schema tests.** Stryker shows surviving mutants: the `^`/`$` anchors of the date and time regexes (e.g. `"19:00x"`, `"2026-11-13x"` are not tested), a thrown non-`Error` value, and the 500-character cap on stored parser error messages.
-- **test-guard: close tester-identity spoofing.** Commit author names are self-declared, so an implementer commit authored as `eminakcil-tester[bot]` still passes. Proposed fix: `tester.yml` sets a `tests-frozen` commit status on the SHA it hands off (the implementer app has read-only commit statuses), and test-guard fails if test paths differ between that SHA and the PR head.
 
 ### Features
 

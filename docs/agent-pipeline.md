@@ -21,7 +21,7 @@ No agent merges. When the repository variable `AUTO_MERGE` is `true`, a determin
 ## Flow
 
 1. Emin opens an issue and adds `agent:ready`.
-2. **tester.yml** (trigger: `agent:ready` added) opens `task/<no>-<short-name>` from main, writes failing tests, pushes, adds `agent:tests-ready`.
+2. **tester.yml** (trigger: `agent:ready` added) opens `task/<no>-<short-name>` from main, writes failing tests and pushes. A deterministic workflow step then sets a `tests-frozen` commit status on the pushed SHA and adds `agent:tests-ready`.
 3. **implementer.yml** (trigger: `agent:tests-ready` added, or a `changes_requested` review on the implementer's PR) writes code without touching tests and opens a PR with `Closes #<no>`. A following workflow step enables auto-merge if `vars.AUTO_MERGE == 'true'`.
 4. **reviewer.yml** (trigger: implementer's PR opened or updated) approves or requests changes.
 5. After two review rounds without resolution, the task gets `needs-human`.
@@ -37,12 +37,12 @@ Only **Repository permissions** are used. Organization, Account and Enterprise p
 | Pull requests   | Read         | Read & write | Read & write |
 | Issues          | Read & write | Read & write | Read & write |
 | Checks          | Read         | Read         | Read         |
-| Commit statuses | Read         | Read         | Read         |
+| Commit statuses | Read & write | Read         | Read         |
 | Actions         | Read         | Read         | Read         |
 | Workflows       | No access    | No access    | No access    |
 | Everything else | No access    | No access    | No access    |
 
-`Workflows: No access` deliberately prevents bots from editing `.github/workflows/`. `.pem` files are secrets: never committed.
+`Workflows: No access` deliberately prevents bots from editing `.github/workflows/`. `.pem` files are secrets: never committed. The tester needs `Commit statuses: Read & write` for the `tests-frozen` handoff status; the implementer must stay read-only there, so it cannot fake one.
 
 ## Repo settings
 
@@ -144,14 +144,14 @@ Protected by `CODEOWNERS`, so agents cannot change their own rules. Every mistak
 - At least one test per acceptance criterion; the test name says which criterion it covers.
 - Tests must be red now. A passing test proves nothing.
 - Own port fakes and port interfaces: if the criteria imply a new port or port method, define the interface in `packages/core/src/ports/` (types only) and its fake under `packages/core/test/fakes/`.
-- Otherwise touch only test files and fixtures. Push, add `agent:tests-ready`.
+- Otherwise touch only test files and fixtures. Push; the workflow freezes the tests (`tests-frozen` status) and adds `agent:tests-ready`.
 
 **implementer.md**
 - Read the issue, criteria and the tester's tests.
 - Turn tests green without touching test files. If a test, fake or port interface looks wrong or missing, do not work around it: explain on the issue and add `needs-human`.
 - Open a PR containing `Closes #<no>` with a criteria table in the description. Never merge or enable auto-merge; the workflow does that.
 - On review feedback, make only the requested changes. Round labels are managed by `round-limit.yml`, not by the agent.
-- Rebase if main moved. If a conflict cannot be resolved, add `needs-human`.
+- Merge `main` into the branch if it moved (never rebase or force-push: it would lose the `tests-frozen` commit). If a conflict cannot be resolved, add `needs-human`.
 
 **reviewer.md**
 - Read the issue, criteria, tests and diff.
@@ -164,13 +164,13 @@ Protected by `CODEOWNERS`, so agents cannot change their own rules. Every mistak
 
 Agent instructions are a request; CI is a rule. Critical constraints are enforced by CI and marked as required status checks.
 
-| Check           | Prevents                             | How                                                                                                                                                        |
-| --------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| test            | Code not meeting criteria            | All tests pass                                                                                                                                             |
-| typecheck, lint | Type and style errors                | `tsc`, Biome                                                                                                                                               |
-| test-guard      | Implementer passing by editing tests | On implementer PRs, fail if any commit touching test paths is not authored by the tester bot                                                               |
-| mutation        | Tests that prove nothing             | Stryker on changed files; fail below threshold (start at 70%)                                                                                              |
-| round-limit     | Infinite bot loop                    | `round-limit.yml` bumps `agent:round-1` → `agent:round-2`; a third request-changes adds `needs-human`, and the implementer workflow skips after two rounds |
+| Check           | Prevents                                             | How                                                                                                                                                                                                                                                                                  |
+| --------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| test            | Code not meeting criteria                            | All tests pass                                                                                                                                                                                                                                                                       |
+| typecheck, lint | Type and style errors                                | `tsc`, Biome                                                                                                                                                                                                                                                                         |
+| test-guard      | Implementer passing by editing tests or weakening CI | On implementer PRs: every changed test path must equal the tester's `tests-frozen` SHA (a status only the tester app can create); test-touching commits must be authored by the tester bot; CI, lint and mutation config may not change. CI runs the base branch copy of the script. |
+| mutation        | Tests that prove nothing                             | Stryker on changed files; fail below threshold (start at 70%)                                                                                                                                                                                                                        |
+| round-limit     | Infinite bot loop                                    | `round-limit.yml` bumps `agent:round-1` → `agent:round-2`; a third request-changes adds `needs-human`, and the implementer workflow skips after two rounds                                                                                                                           |
 
 ## Setup order
 
