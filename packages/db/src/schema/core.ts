@@ -1,5 +1,6 @@
 // Core-owned tables (docs/project-brief.md, "Data model").
 // All instants are timestamptz in UTC; the user's timezone lives on `user`.
+import type { ParseAttempt } from "@katip/core";
 import {
 	boolean,
 	index,
@@ -91,6 +92,11 @@ export const inputs = pgTable(
 		/** Last raw parser output, valid or not (eval dataset). */
 		parseResult: jsonb("parse_result"),
 		parseValid: boolean("parse_valid"),
+		/** Every parser attempt in order, including invalid and failed ones. */
+		parseAttempts: jsonb("parse_attempts")
+			.$type<ParseAttempt[]>()
+			.default([])
+			.notNull(),
 		modelVersion: text("model_version"),
 		corrected: boolean("corrected").default(false).notNull(),
 		createdAt: instant("created_at").notNull(),

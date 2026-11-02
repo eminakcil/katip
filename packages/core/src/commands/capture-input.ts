@@ -37,11 +37,15 @@ export interface CaptureInputCommand {
 export type CaptureInputResult =
 	| { kind: "captured"; item: Item; reminders: Reminder[]; timezone: string }
 	| { kind: "needs_clarification"; inputId: string }
+	/** The parser call failed (network, 5xx, timeout); the input is kept. */
+	| { kind: "parser_unavailable"; inputId: string }
 	| { kind: "unsupported_type"; inputId: string; type: ItemType }
 	| { kind: "unknown_user" };
 
 /** One retry after invalid output, then the user is asked (CLAUDE.md). */
 const MAX_PARSE_ATTEMPTS = 2;
+/** Parser error messages are stored for debugging; keep them bounded. */
+const MAX_ERROR_LENGTH = 500;
 const UNSUPPORTED_TYPES: ReadonlySet<ItemType> = new Set([
 	"recurring",
 	"annual",
@@ -66,6 +70,7 @@ export function createCaptureInput(deps: CaptureInputDeps) {
 			transcript: null,
 			parseResult: null,
 			parseValid: null,
+			parseAttempts: [],
 			modelVersion: null,
 			corrected: false,
 			createdAt: now,
@@ -73,13 +78,36 @@ export function createCaptureInput(deps: CaptureInputDeps) {
 		await repos.inputs.insert(input);
 
 		let parsed: ParsedItem | null = null;
+		let unavailable = false;
 		for (let attempt = 0; attempt < MAX_PARSE_ATTEMPTS && !parsed; attempt++) {
-			const response = await parser.parse({
-				text: command.text,
-				now,
-				timezone: user.timezone,
-			});
+			let response: Awaited<ReturnType<InputParser["parse"]>>;
+			try {
+				response = await parser.parse({
+					text: command.text,
+					now,
+					timezone: user.timezone,
+				});
+			} catch (error) {
+				// Infrastructure failure, not bad output: stop and keep the input.
+				input.parseAttempts.push({
+					raw: null,
+					valid: false,
+					modelVersion: null,
+					error: errorMessage(error),
+				});
+				input.parseResult = null;
+				input.parseValid = false;
+				input.modelVersion = null;
+				unavailable = true;
+				break;
+			}
 			const validation = parsedItemSchema.safeParse(response.raw);
+			input.parseAttempts.push({
+				raw: response.raw,
+				valid: validation.success,
+				modelVersion: response.modelVersion,
+				error: null,
+			});
 			input.parseResult = response.raw;
 			input.parseValid = validation.success;
 			input.modelVersion = response.modelVersion;
@@ -87,6 +115,7 @@ export function createCaptureInput(deps: CaptureInputDeps) {
 		}
 		await repos.inputs.update(input);
 
+		if (unavailable) return { kind: "parser_unavailable", inputId: input.id };
 		if (!parsed) return { kind: "needs_clarification", inputId: input.id };
 		if (UNSUPPORTED_TYPES.has(parsed.type)) {
 			return { kind: "unsupported_type", inputId: input.id, type: parsed.type };
@@ -165,4 +194,9 @@ function buildItem(
 		sourceInputId: ctx.sourceInputId,
 		createdAt: ctx.now,
 	};
+}
+
+function errorMessage(error: unknown): string {
+	const message = error instanceof Error ? error.message : String(error);
+	return message.slice(0, MAX_ERROR_LENGTH);
 }

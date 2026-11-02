@@ -1,0 +1,1 @@
+ALTER TABLE "inputs" ADD COLUMN "parse_attempts" jsonb DEFAULT '[]' NOT NULL;
