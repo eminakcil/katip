@@ -62,3 +62,34 @@ jobs:
             --model claude-opus-5-5
             --max-turns 60
             --allowedTools "Read,Edit,Write,Grep,Glob,Bash(git:*),Bash(gh issue:*),Bash(npm test:*),Bash(npm run:*),Bash(npx vitest:*)"
+      # Deterministic handoff: freeze the tests on the pushed SHA (a commit status
+      # only the tester app can create), then start the implementer. The agent
+      # itself never adds agent:tests-ready.
+      - name: Freeze tests and hand off to the implementer
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          REPO: ${{ github.repository }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          if gh issue view "$ISSUE" -R "$REPO" --json labels --jq '.labels[].name' | grep -qx 'needs-human'; then
+            echo "Issue needs a human; no handoff."
+            exit 0
+          fi
+          git fetch --quiet origin
+          branch=$(git for-each-ref --format='%(refname:lstrip=3)' "refs/remotes/origin/task/${ISSUE}-*" | head -1)
+          if [ -z "$branch" ]; then
+            gh issue edit "$ISSUE" -R "$REPO" --add-label needs-human
+            gh issue comment "$ISSUE" -R "$REPO" --body "Tester run ended without pushing a task/${ISSUE}-* branch. Needs a human."
+            exit 1
+          fi
+          sha=$(git rev-parse "origin/$branch")
+          if [ "$(git rev-list --count "origin/main..$sha")" -eq 0 ]; then
+            gh issue edit "$ISSUE" -R "$REPO" --add-label needs-human
+            gh issue comment "$ISSUE" -R "$REPO" --body "Branch $branch has no commits beyond main. Needs a human."
+            exit 1
+          fi
+          gh api "repos/$REPO/statuses/$sha" \
+            -f state=success -f context=tests-frozen \
+            -f description="Tests handed off for #$ISSUE"
+          gh issue edit "$ISSUE" -R "$REPO" --add-label agent:tests-ready
+          echo "Froze tests at $sha on $branch."

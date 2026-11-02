@@ -74,22 +74,32 @@ jobs:
   test-guard:
     name: test-guard
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: read # tests-frozen lookups
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Test changes on implementer PRs must come from the tester bot
+      - name: Implementer PRs keep the frozen tests and protected config
         env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           if [ "${{ github.event_name }}" != "pull_request" ]; then
             echo "test-guard: not a pull request; nothing to check."
             exit 0
           fi
-          .github/scripts/test-guard.sh \
-            "${{ github.event.pull_request.base.sha }}" \
-            "${{ github.event.pull_request.head.sha }}" \
-            "$PR_AUTHOR"
+          if [ "$PR_AUTHOR" != "eminakcil-implementer[bot]" ]; then
+            echo "test-guard: PR opened by $PR_AUTHOR; nothing to check."
+            exit 0
+          fi
+          # Run the base branch copy so the PR under review cannot weaken the guard.
+          git show "$BASE:.github/scripts/test-guard.sh" > "$RUNNER_TEMP/test-guard.sh"
+          bash "$RUNNER_TEMP/test-guard.sh" "$BASE" "$HEAD" "$PR_AUTHOR"
 
   mutation:
     name: mutation
