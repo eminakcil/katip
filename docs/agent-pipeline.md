@@ -164,13 +164,13 @@ Protected by `CODEOWNERS`, so agents cannot change their own rules. Every mistak
 
 Agent instructions are a request; CI is a rule. Critical constraints are enforced by CI and marked as required status checks.
 
-| Check           | Prevents                             | How                                                                   |
-| --------------- | ------------------------------------ | --------------------------------------------------------------------- |
-| test            | Code not meeting criteria            | All tests pass                                                        |
-| typecheck, lint | Type and style errors                | `tsc`, Biome                                                          |
-| test-guard      | Implementer passing by editing tests | Fail if implementer-bot commits touch test paths                      |
-| mutation        | Tests that prove nothing             | Stryker on changed files; fail below threshold (start at 70%)         |
-| round-limit     | Infinite bot loop                    | A new request-changes while `agent:round-2` is set adds `needs-human` |
+| Check           | Prevents                             | How                                                                                          |
+| --------------- | ------------------------------------ | -------------------------------------------------------------------------------------------- |
+| test            | Code not meeting criteria            | All tests pass                                                                               |
+| typecheck, lint | Type and style errors                | `tsc`, Biome                                                                                 |
+| test-guard      | Implementer passing by editing tests | On implementer PRs, fail if any commit touching test paths is not authored by the tester bot |
+| mutation        | Tests that prove nothing             | Stryker on changed files; fail below threshold (start at 70%)                                |
+| round-limit     | Infinite bot loop                    | A new request-changes while `agent:round-2` is set adds `needs-human`                        |
 
 ## Setup order
 

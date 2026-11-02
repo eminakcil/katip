@@ -78,7 +78,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Implementer bot must not touch tests
+      - name: Test changes on implementer PRs must come from the tester bot
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           if [ "${{ github.event_name }}" != "pull_request" ]; then
             echo "test-guard: not a pull request; nothing to check."
@@ -86,7 +88,8 @@ jobs:
           fi
           .github/scripts/test-guard.sh \
             "${{ github.event.pull_request.base.sha }}" \
-            "${{ github.event.pull_request.head.sha }}"
+            "${{ github.event.pull_request.head.sha }}" \
+            "$PR_AUTHOR"
 
   mutation:
     name: mutation
