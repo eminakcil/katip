@@ -3,8 +3,10 @@ import type {
 	Input,
 	Item,
 	ItemEvent,
+	JobScheduler,
 	Reminder,
 	Repositories,
+	TransactionContext,
 	UnitOfWork,
 	User,
 } from "@katip/core";
@@ -17,6 +19,9 @@ import { inputs, itemEvents, items, reminders } from "./schema/core";
 
 /** Any async Drizzle Postgres database (node-postgres in prod, PGlite in tests). */
 export type AnyDatabase = PgAsyncDatabase<PgQueryResultHKT, typeof relations>;
+export type AnyTransaction = Parameters<
+	Parameters<AnyDatabase["transaction"]>[0]
+>[0];
 type Executor = Pick<AnyDatabase, "select" | "insert" | "update">;
 
 export function createRepositories(db: Executor): Repositories {
@@ -73,10 +78,18 @@ function toInputRow(input: Input) {
 	};
 }
 
-export class DrizzleUnitOfWork implements UnitOfWork {
-	constructor(private readonly db: AnyDatabase) {}
+/** Builds the job scheduler bound to a transaction (pg-boss in production). */
+export type JobSchedulerFactory = (tx: AnyTransaction) => JobScheduler;
 
-	run<T>(work: (repos: Repositories) => Promise<T>): Promise<T> {
-		return this.db.transaction((tx) => work(createRepositories(tx)));
+export class DrizzleUnitOfWork implements UnitOfWork {
+	constructor(
+		private readonly db: AnyDatabase,
+		private readonly jobsFor: JobSchedulerFactory,
+	) {}
+
+	run<T>(work: (tx: TransactionContext) => Promise<T>): Promise<T> {
+		return this.db.transaction((tx) =>
+			work({ ...createRepositories(tx), jobs: this.jobsFor(tx) }),
+		);
 	}
 }

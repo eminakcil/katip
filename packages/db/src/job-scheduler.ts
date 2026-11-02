@@ -1,6 +1,9 @@
 // pg-boss implementation of the core JobScheduler port (ADR 0008).
 import type { JobScheduler } from "@katip/core";
-import type { PgBoss } from "pg-boss";
+import { type SQLWrapper, sql } from "drizzle-orm";
+import { type Db, fromDrizzle, type PgBoss } from "pg-boss";
+
+import type { AnyTransaction } from "./repositories";
 
 export const REMINDER_QUEUE = "reminder-delivery";
 
@@ -25,7 +28,23 @@ export async function ensureQueues(boss: PgBoss): Promise<void> {
 }
 
 export class PgBossJobScheduler implements JobScheduler {
-	constructor(private readonly boss: PgBoss) {}
+	/**
+	 * @param db When given, every queue write runs on this connection, i.e.
+	 * inside the caller's transaction (ADR 0008).
+	 */
+	constructor(
+		private readonly boss: PgBoss,
+		private readonly db?: Db,
+	) {}
+
+	/** A scheduler whose writes join the given Drizzle transaction. */
+	static inTransaction(boss: PgBoss, tx: AnyTransaction): PgBossJobScheduler {
+		// Drizzle 1.0 needs an explicit row mode; pg-boss expects row objects.
+		const executor = {
+			execute: (query: unknown) => tx.execute(query as SQLWrapper, "objects"),
+		};
+		return new PgBossJobScheduler(boss, fromDrizzle(executor, sql));
+	}
 
 	async scheduleReminder(job: {
 		reminderId: string;
@@ -41,6 +60,7 @@ export class PgBossJobScheduler implements JobScheduler {
 			startAfter: job.fireAt,
 			retryLimit: 5,
 			retryBackoff: true,
+			db: this.db,
 		});
 		if (id) return id;
 
@@ -48,6 +68,7 @@ export class PgBossJobScheduler implements JobScheduler {
 		const [existing] = await this.boss.findJobs(REMINDER_QUEUE, {
 			key,
 			queued: true,
+			db: this.db,
 		});
 		if (!existing) {
 			throw new Error(`pg-boss refused job ${key} but no queued job exists`);
@@ -56,6 +77,6 @@ export class PgBossJobScheduler implements JobScheduler {
 	}
 
 	async cancel(jobId: string): Promise<void> {
-		await this.boss.cancel(REMINDER_QUEUE, jobId);
+		await this.boss.cancel(REMINDER_QUEUE, jobId, { db: this.db });
 	}
 }

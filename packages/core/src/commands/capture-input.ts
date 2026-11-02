@@ -15,7 +15,6 @@ import type {
 	Clock,
 	IdGenerator,
 	InputParser,
-	JobScheduler,
 	Repositories,
 	UnitOfWork,
 } from "../ports";
@@ -27,7 +26,6 @@ export interface CaptureInputDeps {
 	uow: UnitOfWork;
 	/** Non-transactional repositories for reads and the raw input record. */
 	repos: Repositories;
-	jobs: JobScheduler;
 }
 
 export interface CaptureInputCommand {
@@ -50,7 +48,7 @@ const UNSUPPORTED_TYPES: ReadonlySet<ItemType> = new Set([
 ]);
 
 export function createCaptureInput(deps: CaptureInputDeps) {
-	const { clock, ids, parser, uow, repos, jobs } = deps;
+	const { clock, ids, parser, uow, repos } = deps;
 
 	return async function captureInput(
 		command: CaptureInputCommand,
@@ -123,19 +121,16 @@ export function createCaptureInput(deps: CaptureInputDeps) {
 				event: "created",
 				at: now,
 			});
+			// Jobs are enqueued in the same transaction (ADR 0008): a reminder row
+			// never exists without its job, and a job never outlives a rollback.
 			for (const reminder of reminders) {
+				reminder.jobId = await tx.jobs.scheduleReminder({
+					reminderId: reminder.id,
+					fireAt: reminder.fireAt,
+				});
 				await tx.reminders.insert(reminder);
 			}
 		});
-
-		// Enqueue only after commit, so a job never points at a rolled-back row.
-		for (const reminder of reminders) {
-			reminder.jobId = await jobs.scheduleReminder({
-				reminderId: reminder.id,
-				fireAt: reminder.fireAt,
-			});
-			await repos.reminders.setJobId(reminder.id, reminder.jobId);
-		}
 
 		return { kind: "captured", item, reminders, timezone: user.timezone };
 	};
