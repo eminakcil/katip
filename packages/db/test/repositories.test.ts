@@ -1,4 +1,4 @@
-import type { Input, Item } from "@katip/core";
+import type { Input, Item, JobScheduler } from "@katip/core";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -54,6 +54,12 @@ function anItem(overrides: Partial<Item> = {}): Item {
 }
 
 let db: AnyDatabase;
+
+// pg-boss is covered against real Postgres in job-scheduler.test.ts.
+const stubJobs: JobScheduler = {
+	scheduleReminder: async () => "job-stub",
+	cancel: async () => {},
+};
 
 beforeEach(async () => {
 	db = await createTestDb();
@@ -120,7 +126,7 @@ describe("Drizzle repositories", () => {
 
 describe("DrizzleUnitOfWork", () => {
 	it("rolls back every write when the work throws", async () => {
-		const uow = new DrizzleUnitOfWork(db);
+		const uow = new DrizzleUnitOfWork(db, () => stubJobs);
 		await createRepositories(db).inputs.insert(anInput());
 
 		await expect(
@@ -133,8 +139,22 @@ describe("DrizzleUnitOfWork", () => {
 		expect(await db.select().from(items)).toEqual([]);
 	});
 
+	it("hands the work a job scheduler built for the same transaction", async () => {
+		const seen: unknown[] = [];
+		const uow = new DrizzleUnitOfWork(db, (tx) => {
+			seen.push(tx);
+			return stubJobs;
+		});
+
+		const jobs = await uow.run(async (ctx) => ctx.jobs);
+
+		expect(jobs).toBe(stubJobs);
+		expect(seen).toHaveLength(1);
+		expect(seen[0]).not.toBe(db);
+	});
+
 	it("commits writes when the work succeeds", async () => {
-		const uow = new DrizzleUnitOfWork(db);
+		const uow = new DrizzleUnitOfWork(db, () => stubJobs);
 		await createRepositories(db).inputs.insert(anInput());
 		await uow.run((repos) => repos.items.insert(anItem()));
 
