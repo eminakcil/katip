@@ -1,4 +1,4 @@
-# Kâtip (working name: Dicta / Kâtip) — Project Brief
+# Kâtip — Project Brief
 
 > Handover document. Anyone (human or agent) taking over the project learns the product, scope, architecture and rules from here. Open decisions are listed at the end.
 >
@@ -8,7 +8,7 @@
 
 Kâtip is a personal assistant that understands anything said to it on Telegram, written or spoken, turns it into a structured record, reminds the user at the right time, and tracks whether it was done. The first user is the project owner, Emin Akçil. The goal is a v1 that can be finished in 3–4 weeks and that has real technical depth.
 
-- **Name:** Undecided between "Dicta" and "Kâtip". The repo is named `katip`.
+- **Name:** Kâtip (ADR 0003). The repo is named `katip`.
 - **One-sentence product definition:** You say it, it understands, it reminds you at the right time, and it tracks whether it got done.
 
 ## Problem and motivation
@@ -131,7 +131,7 @@ The user signs in on the web and links their Telegram account with a single-use 
 - Linking can be removed from the web; the bot notifies the user.
 - An unlinked account messaging the bot only receives the linking link.
 
-**Web sign-in:** No home-grown password system. Email magic link or Google sign-in (open decision). Better-Auth is already in the boilerplate.
+**Web sign-in:** No home-grown password system. Google sign-in via Better-Auth (ADR 0004).
 
 ## Data model
 
@@ -211,8 +211,8 @@ The biggest risk is scope creep and the project being left half-done. The second
 | Userbot account restrictions (v3) | Live listening stays experimental; web recording stays as an alternative |
 
 **Open decisions**
-- [ ] Name: Dicta or Kâtip. Check availability of bot username, domain and GitHub name.
-- [x] Stack: TypeScript (Node + Postgres). Settled by the Better-T-Stack boilerplate: Hono, tRPC, Drizzle, Better-Auth, TanStack Router, Turborepo, Biome.
-- [ ] Web sign-in: email magic link or Google
-- [ ] STT and LLM: start with APIs, or local Whisper from day one
-- [ ] Hosting: deploy target and job queue choice
+- [x] Name: Kâtip (ADR 0003). Bot username still to be checked in BotFather.
+- [x] Stack: TypeScript (Node + Postgres). Settled by the Better-T-Stack boilerplate: Hono, tRPC, Drizzle, Better-Auth, TanStack Router, Turborepo, Biome (ADR 0001).
+- [x] Web sign-in: Google only (ADR 0004)
+- [x] STT and LLM: hosted STT behind a port, provider chosen with the voice feature (ADR 0005); LLM via OpenRouter, Claude Haiku 5.5 by default (ADR 0006)
+- [x] Hosting: single VPS with docker compose (ADR 0007); job queue pg-boss (ADR 0008)

@@ -172,10 +172,6 @@ Agent instructions are a request; CI is a rule. Critical constraints are enforce
 9. Open a trial issue, add `agent:ready`, watch the flow end to end
 10. Verify the bot approval counts toward the ruleset's required approvals
 
-## Open decisions
+## Decisions
 
-- Personal account or free organization? An organization makes Projects board access easier for apps.
-- Model split: Opus 5.5 for all three roles, or Sonnet 5.5 for the implementer?
-- Claude identity: subscription OAuth token or API key?
-- Auto-merge on from day one, or does Emin do the final merge for the first weeks?
-- Mutation threshold: start at 70%?
+Resolved in ADR 0009: personal account with labels as the state machine; Opus 5.5 for tester and reviewer, Sonnet 5.5 for implementer; `CLAUDE_CODE_OAUTH_TOKEN`; auto-merge gated by the `AUTO_MERGE` repo variable (starts `false`); Stryker on `packages/core` with a 70% break threshold.
