@@ -17,7 +17,7 @@ Free-form Turkish text must become a structured item (type, title, dates, scope,
 ## Consequences
 
 - Swapping models is an env change; comparing models on the eval set needs no code change.
-- Haiku is cheap (about $0.10 / $0.50 per million input/output tokens via Anthropic list price), so cost is negligible; accuracy on hard relative dates ("haftaya perşembe", "ay sonu") must be watched in the eval set, and the default can move to a larger model if it falls short.
+- Haiku is cheap at personal volume, so cost is not a constraint; accuracy on hard relative dates ("haftaya perşembe", "ay sonu") must be watched in the eval set, and the default can move to a larger model if it falls short.
 - OpenRouter adds one network hop and a third party; a direct provider adapter can be added behind the same port.
 - Structured-output support varies by model on OpenRouter, which is why schema validation lives in core, not in the adapter.
 - Tests never call OpenRouter; core tests use a fake parser.
