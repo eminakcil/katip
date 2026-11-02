@@ -1,0 +1,22 @@
+{
+	"name": "@katip/telegram",
+	"type": "module",
+	"private": true,
+	"exports": {
+		".": "./src/index.ts",
+		"./*": "./src/*.ts"
+	},
+	"scripts": {
+		"check-types": "tsc --noEmit",
+		"test": "vitest run --passWithNoTests"
+	},
+	"dependencies": {
+		"@katip/core": "*",
+		"grammy": "^1.46.0",
+		"hono": "^4.13.16"
+	},
+	"devDependencies": {
+		"@katip/config": "*",
+		"typescript": "^6.0.3"
+	}
+}

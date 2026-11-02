@@ -1,0 +1,47 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "597e43b6-bcc2-47a7-bebb-f6c5008c7543",
+  "prevIds": [
+    "50a52850-dc88-4d8b-b740-51f566bdafbd"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "inputs",
+        "parse_attempts"
+      ],
+      "writes": [
+        "s|col|public.inputs.parse_attempts",
+        "n|col|public.inputs.parse_attempts",
+        "e|col|public.inputs.parse_attempts"
+      ],
+      "reads": [
+        "n|tbl|public.inputs",
+        "n|sch|public"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "inputs",
+        "name": "parse_attempts",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'[]'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

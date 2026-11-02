@@ -13,6 +13,12 @@
 		"check-types": {
 			"dependsOn": ["^check-types"]
 		},
+		"test": {
+			"outputs": []
+		},
+		"test:mutation": {
+			"cache": false
+		},
 		"dev": {
 			"cache": false,
 			"persistent": true
@@ -59,7 +65,15 @@
 		"CI",
 		"CORS_ORIGIN",
 		"DATABASE_URL",
+		"GOOGLE_CLIENT_ID",
+		"GOOGLE_CLIENT_SECRET",
+		"LLM_MODEL",
 		"NODE_ENV",
+		"OPENROUTER_API_KEY",
+		"TELEGRAM_BOT_TOKEN",
+		"TELEGRAM_MODE",
+		"TELEGRAM_WEBHOOK_SECRET",
+		"TEST_DATABASE_URL",
 		"VERCEL",
 		"VERCEL_ENV",
 		"VERCEL_PROJECT_PRODUCTION_URL",

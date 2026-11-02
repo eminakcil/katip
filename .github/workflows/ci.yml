@@ -1,0 +1,123 @@
+name: CI
+
+# No `paths:` filters: every required check must always run and report.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  NODE_ENV: test
+  # Build-time public env for the web app (Varlock validates it during vite build).
+  VITE_SERVER_URL: http://localhost:3000
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run check-types
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: katip
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://postgres:password@localhost:5432/katip
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  test-guard:
+    name: test-guard
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: read # tests-frozen lookups
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Implementer PRs keep the frozen tests and protected config
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "test-guard: not a pull request; nothing to check."
+            exit 0
+          fi
+          if [ "$PR_AUTHOR" != "eminakcil-implementer[bot]" ]; then
+            echo "test-guard: PR opened by $PR_AUTHOR; nothing to check."
+            exit 0
+          fi
+          # Run the base branch copy so the PR under review cannot weaken the guard.
+          git show "$BASE:.github/scripts/test-guard.sh" > "$RUNNER_TEMP/test-guard.sh"
+          bash "$RUNNER_TEMP/test-guard.sh" "$BASE" "$HEAD" "$PR_AUTHOR"
+
+  mutation:
+    name: mutation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Stryker (changed core files on PRs, all of core on main)
+        run: bash .github/scripts/mutation.sh ${{ github.event.pull_request.base.sha }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-report
+          path: packages/core/reports/mutation/
+          if-no-files-found: ignore

@@ -7,6 +7,7 @@ import { logger } from "hono/logger";
 import { createContext } from "./context";
 import { ENV } from "./env.server";
 import { auth } from "./services";
+import { setupTelegram } from "./telegram";
 
 const app = new Hono();
 
@@ -39,6 +40,8 @@ app.get("/", (c) => {
 });
 
 import { serve } from "@hono/node-server";
+
+await setupTelegram(app);
 
 serve(
 	{

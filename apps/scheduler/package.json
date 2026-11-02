@@ -1,0 +1,24 @@
+{
+	"name": "scheduler",
+	"type": "module",
+	"private": true,
+	"main": "src/index.ts",
+	"scripts": {
+		"check-types": "tsc --noEmit",
+		"dev": "tsx watch src/index.ts",
+		"start": "tsx src/index.ts",
+		"env:generate": "varlock codegen"
+	},
+	"dependencies": {
+		"@katip/core": "*",
+		"@katip/db": "*",
+		"pg-boss": "^12.38.0",
+		"varlock": "1.23.0"
+	},
+	"devDependencies": {
+		"@katip/config": "*",
+		"@types/node": "^26.4.1",
+		"tsx": "^4.23.13",
+		"typescript": "^6.0.3"
+	}
+}

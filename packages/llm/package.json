@@ -1,0 +1,19 @@
+{
+	"name": "@katip/llm",
+	"type": "module",
+	"private": true,
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"check-types": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@katip/core": "*"
+	},
+	"devDependencies": {
+		"@katip/config": "*",
+		"typescript": "^6.0.3"
+	}
+}

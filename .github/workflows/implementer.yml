@@ -1,0 +1,114 @@
+name: Agent — implementer
+
+# Makes the tester's tests pass without touching them, opens the PR, and
+# addresses review feedback (docs/agent-pipeline.md, ADR 0009).
+on:
+  issues:
+    types: [labeled]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+
+jobs:
+  implement:
+    if: >-
+      (github.event_name == 'issues' && github.event.label.name == 'agent:tests-ready') ||
+      (github.event_name == 'pull_request_review' &&
+       github.event.review.state == 'changes_requested' &&
+       github.event.pull_request.user.login == 'eminakcil-implementer[bot]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    concurrency: task-${{ github.event.issue.number || github.event.pull_request.number }}
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: katip
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://postgres:password@localhost:5432/katip
+      NODE_ENV: test
+    steps:
+      - uses: actions/create-github-app-token@v1
+        id: app
+        with:
+          app-id: ${{ vars.IMPLEMENTER_APP_ID }}
+          private-key: ${{ secrets.IMPLEMENTER_APP_KEY }}
+      - name: Stop if the task needs a human
+        id: gate
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          issue="${{ github.event.issue.number }}"
+          if [ -z "$issue" ]; then
+            issue=$(printf '%s' "$PR_BODY" | grep -oiE 'closes #[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
+          fi
+          if [ -n "$issue" ] && gh issue view "$issue" -R "${{ github.repository }}" --json labels \
+               --jq '.labels[].name' | grep -qx 'needs-human'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+          # Round limit without racing round-limit.yml: count change requests directly.
+          pr="${{ github.event.pull_request.number }}"
+          if [ -n "$pr" ]; then
+            rounds=$(gh api "repos/${{ github.repository }}/pulls/$pr/reviews" --paginate \
+              --jq '.[] | select(.state == "CHANGES_REQUESTED") | .id' | wc -l)
+            if [ "$rounds" -gt 2 ]; then
+              echo "More than two review rounds; leaving it to a human."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.skip != 'true'
+        with:
+          token: ${{ steps.app.outputs.token }}
+          fetch-depth: 0
+      - name: Commit as the implementer bot
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          SLUG: ${{ steps.app.outputs.app-slug }}
+        run: |
+          id=$(gh api "/users/${SLUG}%5Bbot%5D" --jq .id)
+          git config user.name "${SLUG}[bot]"
+          git config user.email "${id}+${SLUG}[bot]@users.noreply.github.com"
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.skip != 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - if: steps.gate.outputs.skip != 'true'
+        run: npm ci
+      - uses: anthropics/claude-code-action@v1
+        if: steps.gate.outputs.skip != 'true'
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ steps.app.outputs.token }}
+          prompt: |
+            Your role and rules are in .github/claude/implementer.md. Read it first.
+            Repository: ${{ github.repository }}
+            Event: ${{ github.event_name }}
+            Issue: #${{ github.event.issue.number }}  PR: #${{ github.event.pull_request.number }}
+          claude_args: >-
+            --model claude-sonnet-5-5
+            --max-turns 60
+            --allowedTools "Read,Edit,Write,Grep,Glob,Bash(git:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh pr edit:*),Bash(gh pr comment:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh issue:*),Bash(npm test:*),Bash(npm run:*),Bash(npx vitest:*)"
+      # Deterministic: the agent cannot merge; this step decides (ADR 0009).
+      - name: Enable auto-merge
+        if: steps.gate.outputs.skip != 'true' && vars.AUTO_MERGE == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          PR="${{ github.event.pull_request.number }}"
+          if [ -z "$PR" ]; then
+            PR=$(gh pr list -R "${{ github.repository }}" --state open --json number,headRefName \
+              --jq '[.[] | select(.headRefName | startswith("task/${{ github.event.issue.number }}-"))][0].number // empty')
+          fi
+          if [ -z "$PR" ]; then echo "No open PR for this task; skipping auto-merge."; exit 0; fi
+          gh pr merge "$PR" -R "${{ github.repository }}" --auto --squash

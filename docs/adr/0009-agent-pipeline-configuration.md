@@ -1,0 +1,26 @@
+# 0009. Agent pipeline configuration
+
+- Status: Accepted
+- Date: 2026-11-03
+
+## Context
+
+`docs/agent-pipeline.md` specifies a tester → implementer → reviewer pipeline on GitHub Actions and lists five open decisions: account type, model per role, Claude authentication, auto-merge, and mutation threshold.
+
+## Decision
+
+1. **Account:** The repo stays on the personal account (`eminakcil/katip`). Labels (`agent:ready`, `agent:tests-ready`, `agent:round-1`, `agent:round-2`, `needs-human`) are the pipeline's state machine. A Projects board, if used, is the owner's view only, driven by GitHub's built-in automations; agents do not touch it.
+2. **Models:** tester and reviewer use `claude-opus-5-5`; implementer uses `claude-sonnet-5-5` (its work is constrained by tests). Each is one line in its workflow.
+3. **Claude auth:** `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` (subscription), shared by all three workflows.
+4. **Auto-merge:** Enabled by a deterministic step in `implementer.yml`, not by the agent: after the Claude step, a step guarded by `if: vars.AUTO_MERGE == 'true'` finds the task's PR and runs `gh pr merge --auto --squash`. The implementer agent's allowed tools do not include `gh pr merge`. `AUTO_MERGE` starts as `false`: in Phase 2 the owner merges every PR. Flipping the variable in Phase 3 needs no workflow change.
+5. **Mutation testing:** Stryker on `packages/core` only, `break` threshold 70%. Incremental (changed files) on PRs, full on `main`. Raise to 80% after calibration if comfortably met.
+
+6. **Test integrity:** the tester workflow freezes the tests with a `tests-frozen` commit status (only the tester app has `Commit statuses: write`). On implementer PRs, `test-guard` requires changed test paths to equal that commit, rejects changes to CI, lint and mutation config, and runs from the base branch. Task branches are merged with `main`, never rebased.
+7. **Plan limits:** the repo is private on GitHub Free, where rulesets and branch protection are unavailable. Until it moves to GitHub Pro or becomes public, CI checks and CODEOWNERS are advisory: the owner merges by hand after confirming every check is green, and `AUTO_MERGE` stays `false` (auto-merge needs branch protection).
+
+## Consequences
+
+- No repo transfer; the URL stays stable. If board automation by apps becomes necessary, moving to a free organization is a new ADR.
+- Bot runs share the subscription's usage limits with interactive Claude Code use; switching to `ANTHROPIC_API_KEY` is one secret and one workflow input.
+- Sonnet implementer output may need more review rounds; if calibration shows that, move it to Opus.
+- Adapters are not mutation-tested; they must stay thin, with logic pushed into core.

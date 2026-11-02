@@ -1,0 +1,39 @@
+name: Agent — round limit
+
+# Counts review rounds on the task issue and stops the loop after round 2
+# (docs/agent-pipeline.md). Deterministic: agents do not manage round labels.
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  issues: write
+  pull-requests: read
+
+jobs:
+  count:
+    if: >-
+      github.event.review.state == 'changes_requested' &&
+      github.event.pull_request.user.login == 'eminakcil-implementer[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bump the round label, or hand over to a human after round 2
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          issue=$(printf '%s' "$PR_BODY" | grep -oiE 'closes #[0-9]+' | head -1 | grep -oE '[0-9]+' || true)
+          if [ -z "$issue" ]; then
+            echo "No 'Closes #N' in the PR body; cannot track rounds."
+            exit 0
+          fi
+          labels=$(gh issue view "$issue" -R "$REPO" --json labels --jq '.labels[].name')
+          if printf '%s\n' "$labels" | grep -qx 'agent:round-2'; then
+            gh issue edit "$issue" -R "$REPO" --add-label needs-human
+            gh issue comment "$issue" -R "$REPO" --body "Changes were requested again after two review rounds. Handing over to a human (needs-human)."
+          elif printf '%s\n' "$labels" | grep -qx 'agent:round-1'; then
+            gh issue edit "$issue" -R "$REPO" --remove-label agent:round-1 --add-label agent:round-2
+          else
+            gh issue edit "$issue" -R "$REPO" --add-label agent:round-1
+          fi

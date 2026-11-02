@@ -1,0 +1,58 @@
+// Interfaces the Telegram adapter depends on. Implemented by packages/db and by
+// the grammY-backed sender in this package; faked in test/fakes.ts.
+import type { CaptureInputCommand, CaptureInputResult } from "@katip/core";
+
+export interface InlineButton {
+	text: string;
+	callbackData: string;
+}
+
+export interface OutgoingMessage {
+	text: string;
+	buttons?: InlineButton[][];
+}
+
+export interface TelegramSender {
+	sendMessage(
+		chatId: number,
+		message: OutgoingMessage,
+	): Promise<{ messageId: number }>;
+	answerCallbackQuery(callbackQueryId: string, text?: string): Promise<void>;
+}
+
+/** Webhook idempotency by update_id (tg_processed_updates). */
+export interface ProcessedUpdates {
+	/** Returns false if the update was already claimed (a duplicate). */
+	claim(updateId: number): Promise<boolean>;
+	/** Undo a claim so Telegram's retry is processed (used when handling fails). */
+	release(updateId: number): Promise<void>;
+}
+
+/** Telegram user id → internal user id, via channel_identities. */
+export interface IdentityLookup {
+	findUserId(telegramUserId: number): Promise<string | null>;
+}
+
+/** Bot message ↔ item, for reply-to-add-detail (tg_message_links). */
+export interface MessageLinks {
+	save(link: {
+		chatId: number;
+		messageId: number;
+		itemId: string;
+	}): Promise<void>;
+}
+
+export type CaptureInput = (
+	command: CaptureInputCommand,
+) => Promise<CaptureInputResult>;
+
+export interface UpdateHandlerDeps {
+	sender: TelegramSender;
+	processedUpdates: ProcessedUpdates;
+	identities: IdentityLookup;
+	messageLinks: MessageLinks;
+	captureInput: CaptureInput;
+	clock: { now(): Date };
+	/** Web app URL shown to unlinked users. */
+	webAppUrl: string;
+}

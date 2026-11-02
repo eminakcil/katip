@@ -9,17 +9,24 @@
 		"dev": "tsx watch src/index.ts",
 		"start": "node dist/index.mjs",
 		"env:generate": "varlock codegen",
-		"auth:generate": "varlock run -- npx --yes auth@latest generate --config src/services.ts --output ../../packages/db/src/schema/auth.ts --yes"
+		"auth:generate": "varlock run -- npx --yes auth@latest generate --config src/services.ts --output ../../packages/db/src/schema/auth.ts --yes",
+		"dev:link-telegram": "tsx scripts/dev-link-telegram.ts",
+		"telegram:set-webhook": "tsx scripts/telegram-set-webhook.ts"
 	},
 	"dependencies": {
 		"@hono/node-server": "^2.1.1",
 		"@hono/trpc-server": "^0.4.2",
 		"@katip/api": "*",
 		"@katip/auth": "*",
+		"@katip/core": "*",
 		"@katip/db": "*",
+		"@katip/llm": "*",
+		"@katip/telegram": "*",
 		"@trpc/server": "^11.19.0",
 		"better-auth": "1.7.12",
+		"drizzle-orm": "^1.0.0-rc.5",
 		"hono": "^4.13.7",
+		"pg-boss": "^12.38.0",
 		"varlock": "1.23.0",
 		"zod": "^4.5.4"
 	},

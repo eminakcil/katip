@@ -7,6 +7,9 @@ export const user = pgTable("user", {
 	email: text("email").notNull().unique(),
 	emailVerified: boolean("email_verified").default(false).notNull(),
 	image: text("image"),
+	// Kâtip addition (ADR 0001): IANA timezone; declared as a Better-Auth
+	// additionalField in packages/auth so `auth:generate` keeps it.
+	timezone: text("timezone").default("Europe/Istanbul").notNull(),
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 	updatedAt: timestamp("updated_at")
 		.defaultNow()
