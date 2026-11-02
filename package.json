@@ -26,11 +26,12 @@
 		"docker:up": "docker compose up -d --build",
 		"docker:down": "docker compose down",
 		"docker:logs": "docker compose logs -f",
-		"env:generate": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/",
-		"postinstall": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/",
+		"env:generate": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/ && varlock codegen --path ./apps/scheduler/",
+		"postinstall": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/ && varlock codegen --path ./apps/scheduler/",
 		"auth:generate": "cd apps/server && npm run auth:generate",
 		"check": "biome check --write .",
-		"lint": "biome ci ."
+		"lint": "biome ci .",
+		"dev:scheduler": "turbo run dev -F scheduler --"
 	},
 	"dependencies": {
 		"zod": "^4.5.4"
