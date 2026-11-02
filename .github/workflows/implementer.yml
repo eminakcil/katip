@@ -38,8 +38,8 @@ jobs:
       - uses: actions/create-github-app-token@v1
         id: app
         with:
-          app-id: ${{ secrets.IMPLEMENTER_APP_ID }}
-          private-key: ${{ secrets.IMPLEMENTER_PRIVATE_KEY }}
+          app-id: ${{ vars.IMPLEMENTER_APP_ID }}
+          private-key: ${{ secrets.IMPLEMENTER_APP_KEY }}
       - name: Stop if the task needs a human
         id: gate
         env:

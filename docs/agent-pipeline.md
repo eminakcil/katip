@@ -63,12 +63,12 @@ Only **Repository permissions** are used. Organization, Account and Enterprise p
 
 Stored in Settings → Secrets and variables → Actions.
 
-| Secret                                          | Source                                                             | Used by             |
-| ----------------------------------------------- | ------------------------------------------------------------------ | ------------------- |
-| `CLAUDE_CODE_OAUTH_TOKEN`                       | `claude setup-token` locally (or `ANTHROPIC_API_KEY` from Console) | all three workflows |
-| `TESTER_APP_ID`, `TESTER_PRIVATE_KEY`           | tester app page, `.pem` contents                                   | tester.yml          |
-| `IMPLEMENTER_APP_ID`, `IMPLEMENTER_PRIVATE_KEY` | implementer app page                                               | implementer.yml     |
-| `REVIEWER_APP_ID`, `REVIEWER_PRIVATE_KEY`       | reviewer app page                                                  | reviewer.yml        |
+| Secret                                                 | Source                                                             | Used by             |
+| ------------------------------------------------------ | ------------------------------------------------------------------ | ------------------- |
+| `CLAUDE_CODE_OAUTH_TOKEN`                              | `claude setup-token` locally (or `ANTHROPIC_API_KEY` from Console) | all three workflows |
+| `TESTER_APP_ID` (variable), `TESTER_APP_KEY`           | tester app page, `.pem` contents                                   | tester.yml          |
+| `IMPLEMENTER_APP_ID` (variable), `IMPLEMENTER_APP_KEY` | implementer app page                                               | implementer.yml     |
+| `REVIEWER_APP_ID` (variable), `REVIEWER_APP_KEY`       | reviewer app page                                                  | reviewer.yml        |
 
 Each workflow mints a short-lived app token with `actions/create-github-app-token`. Events created with the default `GITHUB_TOKEN` do not trigger other workflows; events created with app tokens do. This is what lets bots hand work to each other.
 
@@ -94,8 +94,8 @@ jobs:
       - uses: actions/create-github-app-token@v1
         id: app
         with:
-          app-id: ${{ secrets.IMPLEMENTER_APP_ID }}
-          private-key: ${{ secrets.IMPLEMENTER_PRIVATE_KEY }}
+          app-id: ${{ vars.IMPLEMENTER_APP_ID }}
+          private-key: ${{ secrets.IMPLEMENTER_APP_KEY }}
       - uses: actions/checkout@v4
         with:
           token: ${{ steps.app.outputs.token }}
