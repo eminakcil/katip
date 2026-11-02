@@ -15,11 +15,14 @@ Reminders must survive restarts, never be lost, and not be sent twice. The morni
 - **Rescheduling** ("Saati değiştir") updates the row's `fire_at`, enqueues a job for the new occurrence, and cancels the old job by its id (stored on the reminder row). Cancelling is cleanup only: if it fails or races with the worker, the stale job still finds a `fire_at` mismatch and skips. Deleting an item sets its reminders to `cancelled`, which the same check skips.
 - The morning list uses pg-boss cron scheduling, evaluated in each user's timezone.
 - Queue access is behind a core port (`JobScheduler`); core does not import pg-boss.
+- **Jobs are enqueued in the same database transaction as the rows they refer to.** `JobScheduler` is part of the transactional context that `UnitOfWork.run` hands to commands, next to the repositories. The pg-boss adapter sends with `db: fromDrizzle(tx, sql)`, so the job insert commits or rolls back together with the item, its event and its reminders. The same applies to rescheduling (new job + `fire_at` update + cancel of the old job in one transaction).
 
 ## Consequences
 
 - No Redis or extra infrastructure; queue data is backed up with the database.
 - Delivery is at-least-once at the transport level: a crash after Telegram accepts a message but before the status update can repeat one send. This is accepted; it can never silently drop a reminder.
+- There is no window where a reminder row exists without its job, or a job exists for a rolled-back row, so no repair sweep is needed.
+- pg-boss must use the same database as the application tables (its `pgboss` schema lives next to `public`).
 - Correctness depends on the row check, not on job cancellation; the core reminder rules ("skip unless pending and fire_at matches") are unit-tested with a fake clock.
 - `reminders` gets a `job_id` column for cancellation.
 - pg-boss creates its own schema (`pgboss`); it is excluded from Drizzle migrations.
