@@ -31,6 +31,7 @@ apps/web            React + TanStack Router UI
 - Core talks to the outside only through ports: repositories, `Clock`, `IdGenerator`, `InputParser` (LLM), `SpeechToText`, `Notifier`, `JobScheduler`.
 - Every LLM result is validated against a Zod schema in core before use. Invalid output is retried once, then the user is asked. Invalid data never reaches the database.
 - All times are stored in UTC (`timestamptz`). The user's IANA timezone is on the user record; convert only at the edges (parsing input, rendering output).
+- The Telegram webhook is registered with a `secret_token` (`TELEGRAM_WEBHOOK_SECRET`). The server rejects, with 401, any webhook request whose `X-Telegram-Bot-Api-Secret-Token` header is missing or does not match (constant-time compare), before parsing the body or calling core.
 - Telegram webhooks are idempotent by `update_id`.
 - Adapters stay thin. Logic that can be tested belongs in core (mutation testing only covers core, ADR 0009).
 

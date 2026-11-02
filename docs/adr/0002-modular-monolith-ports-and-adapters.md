@@ -16,6 +16,7 @@ One repo, one deploy, strict module boundaries:
 - `apps/scheduler` is a separate process in the same codebase that fires reminders and the morning list through core.
 - Commands flow from adapters into core. Notifications leave core through the notifier port and are delivered by the channel adapter.
 - Core never imports an adapter, never imports Telegram/Hono/tRPC/Drizzle libraries, and never mentions "Telegram". A Biome `noRestrictedImports` rule scoped to `packages/core/**` enforces this and fails CI.
+- The Telegram webhook is registered (`setWebhook`) with a `secret_token` from env (`TELEGRAM_WEBHOOK_SECRET`). The server rejects any webhook request whose `X-Telegram-Bot-Api-Secret-Token` header is missing or does not match (constant-time compare), with 401, before parsing the body or touching core. Accepted updates are deduplicated by `update_id`.
 - External identity → internal `userId` mapping happens in the adapter. Adapter-private state (e.g. `tg_message_links`) is owned by that adapter; core does not read it.
 
 ## Consequences
