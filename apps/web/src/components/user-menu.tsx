@@ -12,6 +12,7 @@ import { Skeleton } from "@katip/ui/components/skeleton";
 import { Link, useNavigate } from "@tanstack/react-router";
 
 import { authClient } from "@/lib/auth-client";
+import { strings } from "@/strings";
 
 export default function UserMenu() {
 	const navigate = useNavigate();
@@ -24,7 +25,7 @@ export default function UserMenu() {
 	if (!session) {
 		return (
 			<Link to="/login">
-				<Button variant="outline">Sign In</Button>
+				<Button variant="outline">{strings.userMenu.signIn}</Button>
 			</Link>
 		);
 	}
@@ -36,7 +37,7 @@ export default function UserMenu() {
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="bg-card">
 				<DropdownMenuGroup>
-					<DropdownMenuLabel>My Account</DropdownMenuLabel>
+					<DropdownMenuLabel>{strings.userMenu.myAccount}</DropdownMenuLabel>
 					<DropdownMenuSeparator />
 					<DropdownMenuItem>{session.user.email}</DropdownMenuItem>
 					<DropdownMenuItem
@@ -53,7 +54,7 @@ export default function UserMenu() {
 							});
 						}}
 					>
-						Sign Out
+						{strings.userMenu.signOut}
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
 			</DropdownMenuContent>

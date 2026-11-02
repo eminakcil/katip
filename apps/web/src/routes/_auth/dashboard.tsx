@@ -1,7 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { trpc } from "@/utils/trpc";
+import { strings } from "@/strings";
 
 export const Route = createFileRoute("/_auth/dashboard")({
 	component: RouteComponent,
@@ -10,13 +9,10 @@ export const Route = createFileRoute("/_auth/dashboard")({
 function RouteComponent() {
 	const { session } = Route.useRouteContext();
 
-	const privateData = useQuery(trpc.privateData.queryOptions());
-
 	return (
-		<div>
-			<h1>Dashboard</h1>
-			<p>Welcome {session.data?.user.name}</p>
-			<p>API: {privateData.data?.message}</p>
+		<div className="container mx-auto max-w-3xl px-4 py-2">
+			<h1 className="my-6 text-2xl font-bold">{strings.dashboard.title}</h1>
+			<p>{strings.dashboard.welcome(session.data?.user.name ?? "")}</p>
 		</div>
 	);
 }

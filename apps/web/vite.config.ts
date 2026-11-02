@@ -24,9 +24,9 @@ export default defineConfig({
 			registerType: "autoUpdate",
 			workbox: { globPatterns: ["**/*.{js,css,html,png,svg,ico}"] },
 			manifest: {
-				name: "katip",
-				short_name: "katip",
-				description: "katip - PWA Application",
+				name: "Kâtip",
+				short_name: "Kâtip",
+				description: "Kâtip — kişisel asistan",
 				theme_color: "#0c0c0c",
 			},
 			pwaAssets: { disabled: false, config: true },
