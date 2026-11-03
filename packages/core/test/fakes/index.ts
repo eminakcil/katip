@@ -97,6 +97,19 @@ interface StoreState {
 	jobs: FakeJob[];
 }
 
+/** When an item is scheduled: startsAt for events/reminders, dueAt for tasks. */
+function itemTime(item: Item): Date | null {
+	switch (item.type) {
+		case "event":
+		case "reminder":
+			return item.startsAt;
+		case "task":
+			return item.dueAt;
+		default:
+			return null;
+	}
+}
+
 type Table = Exclude<keyof StoreState, "jobs">;
 
 function cloneState(state: StoreState): StoreState {
@@ -137,7 +150,23 @@ export class InMemoryStore implements UnitOfWork {
 				this.state.inputs[index] = structuredClone(input);
 			},
 		},
-		items: { insert: async (item) => this.insert("items", item) },
+		items: {
+			insert: async (item) => this.insert("items", item),
+			listOpenInRange: async (ownerId, { from, to }) =>
+				this.state.items
+					.filter((item) => {
+						if (item.ownerId !== ownerId || item.status !== "open") {
+							return false;
+						}
+						const at = itemTime(item);
+						return (
+							at !== null &&
+							at.getTime() >= from.getTime() &&
+							at.getTime() < to.getTime()
+						);
+					})
+					.map((item) => structuredClone(item)),
+		},
 		itemEvents: { insert: async (event) => this.insert("itemEvents", event) },
 		reminders: {
 			insert: async (reminder) => this.insert("reminders", reminder),
