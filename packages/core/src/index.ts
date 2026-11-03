@@ -1,6 +1,7 @@
 export * from "./commands/capture-input";
 export * from "./commands/list-items";
 export * from "./commands/list-today";
+export * from "./commands/list-week";
 export {
 	EVENT_LEAD_MINUTES,
 	TASK_REMINDER_TIME,

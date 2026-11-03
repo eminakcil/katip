@@ -1,5 +1,6 @@
 // Telegram update → core command → Turkish reply. Used by both the webhook
 // (production) and long polling (dev), so behaviour is identical in both.
+import type { Item } from "@katip/core";
 import type { UpdateHandlerDeps } from "./ports";
 import { renderCaptureResult } from "./render";
 import { formatDateTr, formatTimeTr, strings } from "./strings";
@@ -73,6 +74,10 @@ export function createUpdateHandler(deps: UpdateHandlerDeps) {
 				await reply(await renderToday(d, userId));
 				return;
 			}
+			if (command === "hafta") {
+				await reply(await renderWeek(d, userId));
+				return;
+			}
 			await reply(
 				command === "start" ? strings.welcome : strings.commandComingSoon,
 			);
@@ -92,6 +97,31 @@ export function createUpdateHandler(deps: UpdateHandlerDeps) {
 		if (result.kind === "captured") {
 			await d.messageLinks.save({ chatId, messageId, itemId: result.item.id });
 		}
+	}
+
+	function itemLine(item: Item, timezone: string): string {
+		if (item.allDay) return strings.todayAllDay(item.title);
+		const at = item.type === "task" ? item.dueAt : item.startsAt;
+		return at
+			? strings.todayTimed(formatTimeTr(at, timezone), item.title)
+			: strings.todayAllDay(item.title);
+	}
+
+	async function renderWeek(
+		d: UpdateHandlerDeps,
+		userId: string,
+	): Promise<string> {
+		const result = await d.listWeek({ userId });
+		if (result.kind === "unknown_user") return strings.notLinked(d.webAppUrl);
+		if (result.days.length === 0) return strings.weekEmpty;
+
+		const blocks = result.days.map(({ day, items }) =>
+			[
+				formatDateTr(new Date(`${day}T12:00:00Z`), "UTC"),
+				...items.map((item) => itemLine(item, result.timezone)),
+			].join("\n"),
+		);
+		return [strings.weekHeader, ...blocks].join("\n\n");
 	}
 
 	async function renderToday(

@@ -34,6 +34,9 @@ export const strings = {
 	todayEmpty: "Bugün için kayıtlı bir şey yok. Aklına geleni yazman yeterli.",
 	todayAllDay: (title: string) => `• Tüm gün: ${title}`,
 	todayTimed: (time: string, title: string) => `• ${time} ${title}`,
+	weekHeader: "Önümüzdeki 7 gün:",
+	weekEmpty:
+		"Önümüzdeki 7 gün için kayıtlı bir şey yok. Aklına geleni yazman yeterli.",
 	commandComingSoon: "Bu komut yakında geliyor.",
 	onlyText: "Şimdilik sadece yazılı mesajları anlayabiliyorum.",
 	buttonComingSoon: "Bu özellik yakında geliyor.",
@@ -41,7 +44,7 @@ export const strings = {
 	/** Bot command menu (BotFather / setMyCommands). */
 	commands: [
 		{ command: "bugun", description: "Bugünün listesi" },
-		{ command: "hafta", description: "Bu haftanın listesi" },
+		{ command: "hafta", description: "Önümüzdeki 7 gün" },
 		{ command: "liste", description: "Tüm kayıtlar" },
 		{ command: "baglan", description: "Hesabını bağla" },
 	],
