@@ -53,8 +53,22 @@ export interface InputRepository {
 	update(input: Input): Promise<void>;
 }
 
+/** Half-open UTC range: `from` inclusive, `to` exclusive. */
+export interface InstantRange {
+	from: Date;
+	to: Date;
+}
+
 export interface ItemRepository {
 	insert(item: Item): Promise<void>;
+	/**
+	 * Open items owned by `ownerId` whose time falls inside `range`
+	 * (`from` <= time < `to`). The time of an event or reminder is `startsAt`;
+	 * the time of a task is `dueAt`. Items without such a time (notes) and items
+	 * with status `done` or `cancelled` are never returned. Order is unspecified;
+	 * callers sort.
+	 */
+	listOpenInRange(ownerId: UserId, range: InstantRange): Promise<Item[]>;
 }
 
 export interface ItemEventRepository {
