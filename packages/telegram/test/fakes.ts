@@ -4,6 +4,7 @@ import type { CaptureInputCommand, CaptureInputResult } from "@katip/core";
 import type {
 	IdentityLookup,
 	ListTodayResult,
+	ListWeekResult,
 	MessageLinks,
 	OutgoingMessage,
 	ProcessedUpdates,
@@ -82,6 +83,20 @@ export class ScriptedListToday {
 	readonly run = async (command: {
 		userId: string;
 	}): Promise<ListTodayResult> => {
+		this.commands.push(command);
+		if (this.result instanceof Error) throw this.result;
+		return this.result;
+	};
+}
+
+/** Returns a canned ListWeek result (or throws) and records commands. */
+export class ScriptedListWeek {
+	readonly commands: { userId: string }[] = [];
+	result: ListWeekResult | Error = { kind: "unknown_user" };
+
+	readonly run = async (command: {
+		userId: string;
+	}): Promise<ListWeekResult> => {
 		this.commands.push(command);
 		if (this.result instanceof Error) throw this.result;
 		return this.result;
