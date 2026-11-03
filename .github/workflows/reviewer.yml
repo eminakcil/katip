@@ -32,6 +32,9 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ steps.app.outputs.token }}
+          # Runs on PRs opened/updated by the implementer bot. Explicit list
+          # only, never "*" (public repo).
+          allowed_bots: "eminakcil-implementer"
           prompt: |
             Your role and rules are in .github/claude/reviewer.md. Read it first.
             Repository: ${{ github.repository }}
