@@ -37,6 +37,11 @@ export const strings = {
 	weekHeader: "Önümüzdeki 7 gün:",
 	weekEmpty:
 		"Önümüzdeki 7 gün için kayıtlı bir şey yok. Aklına geleni yazman yeterli.",
+	allHeader: "Tüm kayıtların:",
+	allEmpty: "Kayıtlı bir şey yok. Aklına geleni yazman yeterli.",
+	allUndatedHeader: "Tarihsiz:",
+	allUndatedLine: (title: string) => `• ${title}`,
+	allMore: (count: number) => `… ve ${count} kayıt daha.`,
 	commandComingSoon: "Bu komut yakında geliyor.",
 	onlyText: "Şimdilik sadece yazılı mesajları anlayabiliyorum.",
 	buttonComingSoon: "Bu özellik yakında geliyor.",
