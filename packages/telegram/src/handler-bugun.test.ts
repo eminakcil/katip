@@ -13,7 +13,8 @@
 // AC6 /bugun@<botusername> behaves the same as /bugun.
 // AC7 /bugun never calls captureInput and never saves a message link. An
 //     unlinked user sending /bugun gets the existing "not linked" message.
-//     /hafta and /liste still reply with the existing "coming soon" text.
+//     /liste still replies with the existing "coming soon" text. (/hafta was
+//     implemented in issue #9; see handler-hafta.test.ts.)
 import type { Item } from "@katip/core";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -24,6 +25,7 @@ import {
 	RecordingSender,
 	ScriptedCapture,
 	ScriptedListToday,
+	ScriptedListWeek,
 	textUpdate,
 } from "../test/fakes";
 import { createUpdateHandler } from "./handler";
@@ -86,6 +88,7 @@ beforeEach(() => {
 		messageLinks: links,
 		captureInput: capture.run,
 		listToday: listToday.run,
+		listWeek: new ScriptedListWeek().run,
 		clock: { now: () => now },
 		webAppUrl: WEB,
 	});
@@ -241,7 +244,7 @@ describe("/bugun", () => {
 		]);
 	});
 
-	it.each(["/hafta", "/liste"])(
+	it.each(["/liste"])(
 		"AC7: %s still replies with the coming-soon text",
 		async (command) => {
 			await handle(textUpdate(8, command));

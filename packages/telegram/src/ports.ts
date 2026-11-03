@@ -67,6 +67,22 @@ export type ListToday = (command: {
 	userId: string;
 }) => Promise<ListTodayResult>;
 
+/** Result of core's ListWeek command (issue #9). */
+export type ListWeekResult =
+	| {
+			kind: "listed";
+			/** The user's IANA timezone; render times in it. */
+			timezone: string;
+			/**
+			 * Local calendar days ("YYYY-MM-DD") that have at least one item, in
+			 * ascending order. Items within a day are already in display order.
+			 */
+			days: { day: string; items: Item[] }[];
+	  }
+	| { kind: "unknown_user" };
+
+export type ListWeek = (command: { userId: string }) => Promise<ListWeekResult>;
+
 export interface UpdateHandlerDeps {
 	sender: TelegramSender;
 	processedUpdates: ProcessedUpdates;
@@ -75,6 +91,8 @@ export interface UpdateHandlerDeps {
 	captureInput: CaptureInput;
 	/** Core ListToday command, used by /bugun. */
 	listToday: ListToday;
+	/** Core ListWeek command, used by /hafta. */
+	listWeek: ListWeek;
 	clock: { now(): Date };
 	/** Web app URL shown to unlinked users. */
 	webAppUrl: string;
