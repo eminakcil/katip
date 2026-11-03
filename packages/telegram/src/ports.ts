@@ -1,6 +1,10 @@
 // Interfaces the Telegram adapter depends on. Implemented by packages/db and by
 // the grammY-backed sender in this package; faked in test/fakes.ts.
-import type { CaptureInputCommand, CaptureInputResult } from "@katip/core";
+import type {
+	CaptureInputCommand,
+	CaptureInputResult,
+	Item,
+} from "@katip/core";
 
 export interface InlineButton {
 	text: string;
@@ -46,12 +50,31 @@ export type CaptureInput = (
 	command: CaptureInputCommand,
 ) => Promise<CaptureInputResult>;
 
+/** Result of core's ListToday command (issue #6). */
+export type ListTodayResult =
+	| {
+			kind: "listed";
+			/** The user's local calendar day, "YYYY-MM-DD". */
+			day: string;
+			/** The user's IANA timezone; render times in it. */
+			timezone: string;
+			/** Already in display order. */
+			items: Item[];
+	  }
+	| { kind: "unknown_user" };
+
+export type ListToday = (command: {
+	userId: string;
+}) => Promise<ListTodayResult>;
+
 export interface UpdateHandlerDeps {
 	sender: TelegramSender;
 	processedUpdates: ProcessedUpdates;
 	identities: IdentityLookup;
 	messageLinks: MessageLinks;
 	captureInput: CaptureInput;
+	/** Core ListToday command, used by /bugun. */
+	listToday: ListToday;
 	clock: { now(): Date };
 	/** Web app URL shown to unlinked users. */
 	webAppUrl: string;

@@ -10,7 +10,7 @@
 // AC-H6  If handling fails, the update is released so Telegram's retry is
 //        processed, and the error propagates (webhook answers 500).
 // AC-H7  Commands are never captured: /start greets or prompts linking, other
-//        commands are "coming soon".
+//        commands are "coming soon". (/bugun: see handler-bugun.test.ts.)
 // AC-H8  Non-text messages get the "text only for now" reply.
 // AC-H9  Button presses are acknowledged as "coming soon".
 // AC-H10 Group chats and unrelated update types are ignored.
@@ -23,6 +23,7 @@ import {
 	RecordingLinks,
 	RecordingSender,
 	ScriptedCapture,
+	ScriptedListToday,
 	textUpdate,
 } from "../test/fakes";
 import { createUpdateHandler } from "./handler";
@@ -70,6 +71,7 @@ beforeEach(() => {
 		identities: new MapIdentities({ 42: "u1" }),
 		messageLinks: links,
 		captureInput: capture.run,
+		listToday: new ScriptedListToday().run,
 		clock: { now: () => now },
 		webAppUrl: WEB,
 	});
@@ -166,7 +168,7 @@ describe("update handler", () => {
 		]);
 	});
 
-	it.each(["/bugun", "/hafta", "/liste", "/baglan", "/bilinmeyen"])(
+	it.each(["/hafta", "/liste", "/baglan", "/bilinmeyen"])(
 		"AC-H7: answers %s as coming soon",
 		async (command) => {
 			await handle(textUpdate(9, command));
