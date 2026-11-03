@@ -8,6 +8,8 @@ Candidate tasks, roughly in priority order. Each becomes a GitHub issue with acc
 
 - **Tester follow-up: tighten parser schema tests.** Stryker shows surviving mutants: the `^`/`$` anchors of the date and time regexes (e.g. `"19:00x"`, `"2026-11-13x"` are not tested), a thrown non-`Error` value, and the 500-character cap on stored parser error messages.
 
+- **`apps/web` check-types fails locally on Varlock env config.** Reported by the implementer on PR #4; CI passes. Likely the local `.env` / `NODE_ENV` combination that `vite build` (part of `check-types`) validates through the Varlock Vite integration. Reproduce, then fix the schema or the script.
+
 ### Features
 
 - Reminder delivery worker in `apps/scheduler`: skip unless the row is `pending` and its `fire_at` matches the job (ADR 0008), deliver through the `Notifier` port, mark `sent`.
