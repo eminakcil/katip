@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 
 import {
 	createCaptureInput,
+	createListAll,
 	createListToday,
 	createListWeek,
 } from "@katip/core";
@@ -80,6 +81,11 @@ export async function setupTelegram(app: Hono): Promise<void> {
 		repos: createRepositories(database),
 	});
 
+	const listAll = createListAll({
+		clock: systemClock,
+		repos: createRepositories(database),
+	});
+
 	const bot = createBot(token);
 	const handleUpdate = createUpdateHandler({
 		sender: createGrammySender(bot.api),
@@ -89,6 +95,7 @@ export async function setupTelegram(app: Hono): Promise<void> {
 		captureInput,
 		listToday,
 		listWeek,
+		listAll,
 		clock: systemClock,
 		webAppUrl: ENV.CORS_ORIGIN,
 	});
