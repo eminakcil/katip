@@ -10,7 +10,7 @@ import type {
 	UnitOfWork,
 	User,
 } from "@katip/core";
-import { eq } from "drizzle-orm";
+import { and, eq, gte, inArray, lt, or } from "drizzle-orm";
 import type { PgAsyncDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
 import type { relations } from "./relations";
@@ -50,6 +50,29 @@ export function createRepositories(db: Executor): Repositories {
 		items: {
 			async insert(item: Item) {
 				await db.insert(items).values(item);
+			},
+			async listOpenInRange(ownerId, range) {
+				return db
+					.select()
+					.from(items)
+					.where(
+						and(
+							eq(items.ownerId, ownerId),
+							eq(items.status, "open"),
+							or(
+								and(
+									inArray(items.type, ["event", "reminder"]),
+									gte(items.startsAt, range.from),
+									lt(items.startsAt, range.to),
+								),
+								and(
+									eq(items.type, "task"),
+									gte(items.dueAt, range.from),
+									lt(items.dueAt, range.to),
+								),
+							),
+						),
+					);
 			},
 		},
 		itemEvents: {
