@@ -104,6 +104,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ steps.app.outputs.token }}
+          allowed_bots: "eminakcil-tester,eminakcil-reviewer"
           prompt: |
             Your role and rules are in .github/claude/implementer.md. Read it first.
             Event: ${{ github.event_name }}
@@ -120,11 +121,24 @@ jobs:
         run: |
           PR="${{ github.event.pull_request.number }}"
           if [ -z "$PR" ]; then
-            PR=$(gh pr list --state open --json number,headRefName \n              --jq '[.[] | select(.headRefName | startswith("task/${{ github.event.issue.number }}-"))][0].number // empty')
+            PR=$(gh pr list --state open --json number,headRefName \
+              --jq '[.[] | select(.headRefName | startswith("task/${{ github.event.issue.number }}-"))][0].number // empty')
           fi
           if [ -z "$PR" ]; then echo "No open PR for this task; skipping auto-merge."; exit 0; fi
           gh pr merge "$PR" --auto --squash
 ```
+
+### Bot-triggered runs (`allowed_bots`)
+
+`claude-code-action` refuses to run when the triggering actor is a bot, unless that bot is listed in `allowed_bots`. Each workflow lists exactly the bots that legitimately start it:
+
+| Workflow        | Started by                                            | `allowed_bots`                        |
+| --------------- | ----------------------------------------------------- | ------------------------------------- |
+| tester.yml      | Emin adding `agent:ready`                             | none (humans only)                    |
+| implementer.yml | tester's `agent:tests-ready` label, reviewer's review | `eminakcil-tester,eminakcil-reviewer` |
+| reviewer.yml    | implementer opening or updating its PR                | `eminakcil-implementer`               |
+
+**Never use `"*"`.** The repo is public: a wildcard would let any bot (including ones acting on behalf of outside contributors) start an agent run with our secrets. `round-limit.yml` does not run Claude.
 
 Tester and reviewer use the same skeleton, differing only in trigger, app secrets, instruction file, `--model` (`claude-opus-5-5` for both, ADR 0009) and `--allowedTools`, and they have no auto-merge step. The reviewer has no `Edit`/`Write`.
 
@@ -181,7 +195,7 @@ Agent instructions are a request; CI is a rule. Critical constraints are enforce
 5. Create labels and the Projects board
 6. Set up CI (test, typecheck, lint, test-guard, mutation) and see it green on main
 7. Ruleset, CODEOWNERS, auto-merge, squash
-8. Add the three workflows and instruction files
+8. Add the three workflows and instruction files. If the repo restricts allowed actions (Settings → Actions → General), allow `actions/*`, `anthropics/claude-code-action@*` and `oven-sh/setup-bun@*`: `claude-code-action` installs Bun internally and fails without it
 9. Open a trial issue, add `agent:ready`, watch the flow end to end
 10. Verify the bot approval counts toward the ruleset's required approvals
 
