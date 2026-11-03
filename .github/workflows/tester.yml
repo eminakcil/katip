@@ -59,6 +59,10 @@ jobs:
           github_token: ${{ steps.app.outputs.token }}
           bot_id: ${{ steps.bot.outputs.id }}
           bot_name: ${{ steps.bot.outputs.name }}
+          # No Claude co-author trailer or "Generated with" line: only the app
+          # bots appear on commits and PRs.
+          settings: |
+            {"includeCoAuthoredBy": false, "attribution": {"commit": "", "pr": ""}}
           prompt: |
             Your role and rules are in .github/claude/tester.md. Read it first.
             Repository: ${{ github.repository }}

@@ -45,6 +45,10 @@ jobs:
           github_token: ${{ steps.app.outputs.token }}
           bot_id: ${{ steps.bot.outputs.id }}
           bot_name: ${{ steps.bot.outputs.name }}
+          # No Claude co-author trailer or "Generated with" line: only the app
+          # bots appear on commits and PRs.
+          settings: |
+            {"includeCoAuthoredBy": false, "attribution": {"commit": "", "pr": ""}}
           # Runs on PRs opened/updated by the implementer bot. Explicit list
           # only, never "*" (public repo).
           allowed_bots: "eminakcil-implementer"
