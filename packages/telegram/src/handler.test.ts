@@ -173,7 +173,7 @@ describe("update handler", () => {
 		]);
 	});
 
-	it.each(["/liste", "/baglan", "/bilinmeyen"])(
+	it.each(["/baglan", "/bilinmeyen"])(
 		"AC-H7: answers %s as coming soon",
 		async (command) => {
 			await handle(textUpdate(9, command));
