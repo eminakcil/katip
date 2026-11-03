@@ -78,6 +78,10 @@ export function createUpdateHandler(deps: UpdateHandlerDeps) {
 				await reply(await renderWeek(d, userId));
 				return;
 			}
+			if (command === "liste") {
+				await reply(await renderAll(d, userId));
+				return;
+			}
 			await reply(
 				command === "start" ? strings.welcome : strings.commandComingSoon,
 			);
@@ -122,6 +126,34 @@ export function createUpdateHandler(deps: UpdateHandlerDeps) {
 			].join("\n"),
 		);
 		return [strings.weekHeader, ...blocks].join("\n\n");
+	}
+
+	async function renderAll(
+		d: UpdateHandlerDeps,
+		userId: string,
+	): Promise<string> {
+		const result = await d.listAll({ userId });
+		if (result.kind === "unknown_user") return strings.notLinked(d.webAppUrl);
+		if (result.days.length === 0 && result.undated.length === 0) {
+			return strings.allEmpty;
+		}
+
+		const blocks = result.days.map(({ day, items }) =>
+			[
+				formatDateTr(new Date(`${day}T12:00:00Z`), "UTC"),
+				...items.map((item) => itemLine(item, result.timezone)),
+			].join("\n"),
+		);
+		if (result.undated.length > 0) {
+			blocks.push(
+				[
+					strings.allUndatedHeader,
+					...result.undated.map((item) => strings.allUndatedLine(item.title)),
+				].join("\n"),
+			);
+		}
+		if (result.more > 0) blocks.push(strings.allMore(result.more));
+		return [strings.allHeader, ...blocks].join("\n\n");
 	}
 
 	async function renderToday(

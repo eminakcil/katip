@@ -74,6 +74,12 @@ export function createRepositories(db: Executor): Repositories {
 						),
 					);
 			},
+			async listOpen(ownerId) {
+				return db
+					.select()
+					.from(items)
+					.where(and(eq(items.ownerId, ownerId), eq(items.status, "open")));
+			},
 		},
 		itemEvents: {
 			async insert(event: ItemEvent) {

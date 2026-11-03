@@ -69,6 +69,13 @@ export interface ItemRepository {
 	 * callers sort.
 	 */
 	listOpenInRange(ownerId: UserId, range: InstantRange): Promise<Item[]>;
+	/**
+	 * Every open item owned by `ownerId`, of any type (dated or not), with no
+	 * date bound: past, today and future items are all returned. Items with
+	 * status `done` or `cancelled` are never returned. Order is unspecified;
+	 * callers sort.
+	 */
+	listOpen(ownerId: UserId): Promise<Item[]>;
 }
 
 export interface ItemEventRepository {
