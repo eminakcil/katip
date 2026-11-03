@@ -30,6 +30,10 @@ export const strings = {
 		`Merhaba! Kâtip'i kullanmak için önce hesabını bağlaman gerekiyor. ${webAppUrl} adresinde giriş yap ve “Telegram'ı bağla” düğmesine bas.`,
 	welcome:
 		"Hazırım! Aklına gelen bir şeyi yaz, not alıp zamanı gelince hatırlatayım.",
+	todayHeader: (date: string) => `Bugün, ${date}:`,
+	todayEmpty: "Bugün için kayıtlı bir şey yok. Aklına geleni yazman yeterli.",
+	todayAllDay: (title: string) => `• Tüm gün: ${title}`,
+	todayTimed: (time: string, title: string) => `• ${time} ${title}`,
 	commandComingSoon: "Bu komut yakında geliyor.",
 	onlyText: "Şimdilik sadece yazılı mesajları anlayabiliyorum.",
 	buttonComingSoon: "Bu özellik yakında geliyor.",

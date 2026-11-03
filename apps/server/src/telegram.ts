@@ -3,7 +3,7 @@
 // token (CLAUDE.md, "Local bot testing").
 import { randomUUID } from "node:crypto";
 
-import { createCaptureInput } from "@katip/core";
+import { createCaptureInput, createListToday } from "@katip/core";
 import { ensureQueues, PgBossJobScheduler } from "@katip/db/job-scheduler";
 import {
 	type AnyDatabase,
@@ -66,6 +66,11 @@ export async function setupTelegram(app: Hono): Promise<void> {
 		repos: createRepositories(database),
 	});
 
+	const listToday = createListToday({
+		clock: systemClock,
+		repos: createRepositories(database),
+	});
+
 	const bot = createBot(token);
 	const handleUpdate = createUpdateHandler({
 		sender: createGrammySender(bot.api),
@@ -73,6 +78,7 @@ export async function setupTelegram(app: Hono): Promise<void> {
 		identities: createIdentityLookup(database),
 		messageLinks: createMessageLinks(database),
 		captureInput,
+		listToday,
 		clock: systemClock,
 		webAppUrl: ENV.CORS_ORIGIN,
 	});
