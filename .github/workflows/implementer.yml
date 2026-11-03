@@ -69,15 +69,18 @@ jobs:
         with:
           token: ${{ steps.app.outputs.token }}
           fetch-depth: 0
-      - name: Commit as the implementer bot
+      # claude-code-action sets the git identity itself from bot_id/bot_name
+      # (default claude[bot]); pass the app bot so commits and test-guard agree.
+      - name: Resolve the implementer bot identity
+        id: bot
         if: steps.gate.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           SLUG: ${{ steps.app.outputs.app-slug }}
         run: |
           id=$(gh api "/users/${SLUG}%5Bbot%5D" --jq .id)
-          git config user.name "${SLUG}[bot]"
-          git config user.email "${id}+${SLUG}[bot]@users.noreply.github.com"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+          echo "name=${SLUG}[bot]" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v4
         if: steps.gate.outputs.skip != 'true'
         with:
@@ -90,6 +93,8 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ steps.app.outputs.token }}
+          bot_id: ${{ steps.bot.outputs.id }}
+          bot_name: ${{ steps.bot.outputs.name }}
           # Bot-triggered runs: the tester hands off via label, the reviewer
           # requests changes. Explicit list only, never "*" (public repo).
           allowed_bots: "eminakcil-tester,eminakcil-reviewer"
@@ -101,6 +106,7 @@ jobs:
           claude_args: >-
             --model claude-sonnet-5-5
             --max-turns 60
+            --disallowedTools "Bash(git config:*),Bash(git -c:*)"
             --allowedTools "Read,Edit,Write,Grep,Glob,Bash(git:*),Bash(gh pr create:*),Bash(gh pr view:*),Bash(gh pr edit:*),Bash(gh pr comment:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh issue:*),Bash(npm test:*),Bash(npm run:*),Bash(npx vitest:*)"
       # Deterministic: the agent cannot merge; this step decides (ADR 0009).
       - name: Enable auto-merge
