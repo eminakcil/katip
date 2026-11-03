@@ -95,6 +95,10 @@ jobs:
           github_token: ${{ steps.app.outputs.token }}
           bot_id: ${{ steps.bot.outputs.id }}
           bot_name: ${{ steps.bot.outputs.name }}
+          # No Claude co-author trailer or "Generated with" line: only the app
+          # bots appear on commits and PRs.
+          settings: |
+            {"includeCoAuthoredBy": false, "attribution": {"commit": "", "pr": ""}}
           # Bot-triggered runs: the tester hands off via label, the reviewer
           # requests changes. Explicit list only, never "*" (public repo).
           allowed_bots: "eminakcil-tester,eminakcil-reviewer"

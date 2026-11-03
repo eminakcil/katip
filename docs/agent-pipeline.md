@@ -132,7 +132,7 @@ jobs:
 
 ### Commit identity (`bot_id`, `bot_name`)
 
-`claude-code-action` configures git itself from its `bot_id` and `bot_name` inputs, which default to `claude[bot]` and override any earlier `git config`. Each workflow therefore resolves its app bot first (step `bot`: `gh api /users/<app-slug>%5Bbot%5D` for the id, `<app-slug>[bot]` for the name) and passes both to the action, so commits are authored by `eminakcil-tester[bot]` / `eminakcil-implementer[bot]`. There is no separate `git config` step, and the committing agents run with `--disallowedTools "Bash(git config:*),Bash(git -c:*)"`. The `tests-frozen` check in test-guard does not depend on the author; the authorship check is a second line of defense.
+`claude-code-action` configures git itself from its `bot_id` and `bot_name` inputs, which default to `claude[bot]` and override any earlier `git config`. Each workflow therefore resolves its app bot first (step `bot`: `gh api /users/<app-slug>%5Bbot%5D` for the id, `<app-slug>[bot]` for the name) and passes both to the action, so commits are authored by `eminakcil-tester[bot]` / `eminakcil-implementer[bot]`. There is no separate `git config` step, and the committing agents run with `--disallowedTools "Bash(git config:*),Bash(git -c:*)"`. Claude Code's own attribution is turned off (`settings: {"includeCoAuthoredBy": false, "attribution": {"commit": "", "pr": ""}}`), so no `Co-Authored-By: Claude` trailer reaches the branch commits, and GitHub's squash merge has no Claude co-author to copy. The `tests-frozen` check in test-guard does not depend on the author; the authorship check is a second line of defense.
 
 ### Bot-triggered runs (`allowed_bots`)
 
