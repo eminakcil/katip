@@ -1,0 +1,35 @@
+name: Task
+description: A unit of work for the local agent pipeline (/task <no>, ADR 0010).
+labels: ["status:spec"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The issue is the single source of truth for this task. Acceptance criteria can be drafted by the planner with `/task <no>`; nothing proceeds past spec without the owner's approval.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What should be possible after this task, and why.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: One observable, testable behaviour per line. Quote user-facing Turkish text exactly. Leave "TBD" to let the planner draft them.
+      placeholder: |
+        - **AC1** …
+        - **AC2** …
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: What this task deliberately does not do.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Links, related issues, design hints.
