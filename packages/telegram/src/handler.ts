@@ -2,7 +2,7 @@
 // (production) and long polling (dev), so behaviour is identical in both.
 import type { UpdateHandlerDeps } from "./ports";
 import { renderCaptureResult } from "./render";
-import { strings } from "./strings";
+import { formatDateTr, formatTimeTr, strings } from "./strings";
 
 /** Channel name passed to core; core treats it as an opaque string. */
 export const TELEGRAM_CHANNEL = "telegram";
@@ -69,6 +69,10 @@ export function createUpdateHandler(deps: UpdateHandlerDeps) {
 		}
 		if (text.startsWith("/")) {
 			const command = text.slice(1).split(/[\s@]/)[0];
+			if (command === "bugun") {
+				await reply(await renderToday(d, userId));
+				return;
+			}
 			await reply(
 				command === "start" ? strings.welcome : strings.commandComingSoon,
 			);
@@ -88,5 +92,27 @@ export function createUpdateHandler(deps: UpdateHandlerDeps) {
 		if (result.kind === "captured") {
 			await d.messageLinks.save({ chatId, messageId, itemId: result.item.id });
 		}
+	}
+
+	async function renderToday(
+		d: UpdateHandlerDeps,
+		userId: string,
+	): Promise<string> {
+		const result = await d.listToday({ userId });
+		if (result.kind === "unknown_user") return strings.notLinked(d.webAppUrl);
+		if (result.items.length === 0) return strings.todayEmpty;
+
+		// Noon UTC keeps the calendar date stable when formatted in UTC.
+		const header = strings.todayHeader(
+			formatDateTr(new Date(`${result.day}T12:00:00Z`), "UTC"),
+		);
+		const lines = result.items.map((item) => {
+			if (item.allDay) return strings.todayAllDay(item.title);
+			const at = item.type === "task" ? item.dueAt : item.startsAt;
+			return at
+				? strings.todayTimed(formatTimeTr(at, result.timezone), item.title)
+				: strings.todayAllDay(item.title);
+		});
+		return [header, ...lines].join("\n");
 	}
 }
