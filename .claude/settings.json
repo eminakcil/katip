@@ -1,0 +1,42 @@
+{
+	"$schema": "https://json.schemastore.org/claude-code-settings.json",
+	"permissions": {
+		"allow": [
+			"Bash(npm test)",
+			"Bash(npm test:*)",
+			"Bash(npm run lint)",
+			"Bash(npm run check-types)",
+			"Bash(npm run test:mutation)",
+			"Bash(npx vitest run:*)",
+			"Bash(git status:*)",
+			"Bash(git diff:*)",
+			"Bash(git log:*)",
+			"Bash(git show:*)",
+			"Bash(git rev-list:*)",
+			"Bash(git rev-parse:*)",
+			"Bash(git branch --show-current)",
+			"Bash(git branch --list:*)",
+			"Bash(git fetch:*)",
+			"Bash(git add:*)",
+			"Bash(git commit:*)",
+			"Bash(git switch -c:*)",
+			"Bash(git merge origin/main)",
+			"Bash(gh issue view:*)",
+			"Bash(gh pr view:*)",
+			"Bash(bash .github/scripts/test-guard.sh:*)"
+		]
+	},
+	"hooks": {
+		"PreToolUse": [
+			{
+				"matcher": "Edit|Write|MultiEdit|NotebookEdit",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-test-paths.mjs\""
+					}
+				]
+			}
+		]
+	}
+}

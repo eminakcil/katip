@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Rules for anyone (human or agent) changing this repo. Product and scope: `docs/project-brief.md`. Decisions: `docs/adr/`. Agent pipeline: `docs/agent-pipeline.md`. If something here conflicts with an ADR, the ADR wins; fix this file.
+Rules for anyone (human or agent) changing this repo. Product and scope: `docs/project-brief.md`. Decisions: `docs/adr/`. Agent pipeline: `docs/agent-pipeline.md` (local trial, ADR 0010: run `/task <issue-no>` in Claude Code; agents in `.claude/agents/`). If something here conflicts with an ADR, the ADR wins; fix this file.
 
 ## Language rule
 
@@ -40,8 +40,12 @@ apps/web            React + TanStack Router UI
 ## Testing rules
 
 - Tests are written **from acceptance criteria, before the code**. Each test name says which criterion it covers, e.g. `it("AC2: echoes the full date in Turkish", …)`.
-- **Whoever implements a change does not edit tests.** Test paths are `**/*.test.ts` and `**/test/**` (fixtures and fakes live in `test/` folders). If a test looks wrong, stop and raise it; do not change it. CI `test-guard` enforces this on implementer PRs: test paths must match the tester's `tests-frozen` commit, and CI, lint and mutation config may not change. Implementers merge `main` into task branches and never rebase.
-- **The tester owns port fakes and port interfaces.** Because fakes live under `test/`, the implementer cannot add one. So when acceptance criteria imply a new port (or a new method on one), the tester defines the interface in `packages/core/src/ports/` (types only, no implementation) and its in-memory fake under `packages/core/test/fakes/`, in the same change as the tests. The same holds for adapter ports (e.g. `packages/telegram/src/ports.ts` with fakes in `packages/telegram/test/`). If the implementer finds a port missing or wrong, it stops and raises it instead of working around it.
+- **Whoever implements a change does not edit tests.** Test paths are `**/*.test.ts` and `**/test/**` (fixtures and fakes live in `test/` folders). If a test looks wrong, stop and raise it; do not change it. Implementers merge `main` into task branches and never rebase. Enforcement:
+  - Locally, a `PreToolUse` hook (`.claude/hooks/guard-test-paths.mjs`) blocks the `implementer` agent from editing test paths and the `tester` agent from editing anything but test paths and port interfaces.
+  - CI `test-guard`, on every PR not opened by the implementer bot: once a commit touches a path that is neither a test path nor a port interface, no later commit may touch test paths, and no commit may mix both, unless it carries the trailer `Test-Change-Approved: eminakcil` (owner-approved test change, in its own commit). On `task/*` branches, CI, lint and mutation config may not change.
+  - Bot PRs (ADR 0009, disabled during the trial): test paths must match the tester's `tests-frozen` commit, and CI, lint and mutation config may not change.
+- Pipeline commits carry a `Phase: tests|impl|review-fix` trailer (one commit per phase); `/task` resumes from these trailers.
+- **The tester owns port fakes and port interfaces** (`.claude/agents/tester.md`). Because fakes live under `test/`, the implementer cannot add one. So when acceptance criteria imply a new port (or a new method on one), the tester defines the interface in `packages/core/src/ports/` (types only, no implementation) and its in-memory fake under `packages/core/test/fakes/`, in the same change as the tests. The same holds for adapter ports (e.g. `packages/telegram/src/ports.ts` with fakes in `packages/telegram/test/`). If the implementer finds a port missing or wrong, it stops and raises it instead of working around it.
 - Core tests use in-memory fakes for every port and a **fake clock**. No real time (`Date.now()`, `new Date()` without arguments) in core; read time from the `Clock` port.
 - No real LLM, STT, Telegram or network calls in core tests. The fake parser returns canned outputs, including invalid ones, to exercise schema validation.
 - Adapter tests may use Postgres (via docker compose) but never call external services.

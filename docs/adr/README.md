@@ -13,6 +13,7 @@ One file per decision, numbered, never renumbered. A decision is changed by a ne
 | [0007](0007-hosting-vps-docker-compose.md)          | Hosting: single VPS with docker compose                                       | Accepted |
 | [0008](0008-job-queue-pg-boss.md)                   | Job queue: pg-boss                                                            | Accepted |
 | [0009](0009-agent-pipeline-configuration.md)        | Agent pipeline configuration                                                  | Accepted |
+| [0010](0010-local-agent-pipeline.md)                | Local agent pipeline (trial)                                                  | Proposed |
 
 ## Template
 
