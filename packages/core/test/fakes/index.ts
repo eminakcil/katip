@@ -166,6 +166,10 @@ export class InMemoryStore implements UnitOfWork {
 						);
 					})
 					.map((item) => structuredClone(item)),
+			listOpen: async (ownerId) =>
+				this.state.items
+					.filter((item) => item.ownerId === ownerId && item.status === "open")
+					.map((item) => structuredClone(item)),
 		},
 		itemEvents: { insert: async (event) => this.insert("itemEvents", event) },
 		reminders: {

@@ -83,6 +83,27 @@ export type ListWeekResult =
 
 export type ListWeek = (command: { userId: string }) => Promise<ListWeekResult>;
 
+/** Result of core's ListAll command (issue #22). */
+export type ListAllResult =
+	| {
+			kind: "listed";
+			/** The user's IANA timezone; render times in it. */
+			timezone: string;
+			/**
+			 * Local calendar days ("YYYY-MM-DD") that have at least one shown dated
+			 * item, oldest first (past days included). Items within a day are
+			 * already in display order.
+			 */
+			days: { day: string; items: Item[] }[];
+			/** Shown open notes, already in display order. */
+			undated: Item[];
+			/** How many open items were left out by the 20-item cap (0 if none). */
+			more: number;
+	  }
+	| { kind: "unknown_user" };
+
+export type ListAll = (command: { userId: string }) => Promise<ListAllResult>;
+
 export interface UpdateHandlerDeps {
 	sender: TelegramSender;
 	processedUpdates: ProcessedUpdates;
@@ -93,6 +114,8 @@ export interface UpdateHandlerDeps {
 	listToday: ListToday;
 	/** Core ListWeek command, used by /hafta. */
 	listWeek: ListWeek;
+	/** Core ListAll command, used by /liste. */
+	listAll: ListAll;
 	clock: { now(): Date };
 	/** Web app URL shown to unlinked users. */
 	webAppUrl: string;

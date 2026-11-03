@@ -31,6 +31,7 @@ import {
 	RecordingLinks,
 	RecordingSender,
 	ScriptedCapture,
+	ScriptedListAll,
 	ScriptedListToday,
 	ScriptedListWeek,
 	textUpdate,
@@ -116,6 +117,7 @@ beforeEach(() => {
 		captureInput: capture.run,
 		listToday: listToday.run,
 		listWeek: listWeek.run,
+		listAll: new ScriptedListAll().run,
 		clock: { now: () => now },
 		webAppUrl: WEB,
 	});
