@@ -105,6 +105,8 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ steps.app.outputs.token }}
           allowed_bots: "eminakcil-tester,eminakcil-reviewer"
+          bot_id: ${{ steps.bot.outputs.id }}
+          bot_name: ${{ steps.bot.outputs.name }}
           prompt: |
             Your role and rules are in .github/claude/implementer.md. Read it first.
             Event: ${{ github.event_name }}
@@ -127,6 +129,10 @@ jobs:
           if [ -z "$PR" ]; then echo "No open PR for this task; skipping auto-merge."; exit 0; fi
           gh pr merge "$PR" --auto --squash
 ```
+
+### Commit identity (`bot_id`, `bot_name`)
+
+`claude-code-action` configures git itself from its `bot_id` and `bot_name` inputs, which default to `claude[bot]` and override any earlier `git config`. Each workflow therefore resolves its app bot first (step `bot`: `gh api /users/<app-slug>%5Bbot%5D` for the id, `<app-slug>[bot]` for the name) and passes both to the action, so commits are authored by `eminakcil-tester[bot]` / `eminakcil-implementer[bot]`. There is no separate `git config` step, and the committing agents run with `--disallowedTools "Bash(git config:*),Bash(git -c:*)"`. The `tests-frozen` check in test-guard does not depend on the author; the authorship check is a second line of defense.
 
 ### Bot-triggered runs (`allowed_bots`)
 

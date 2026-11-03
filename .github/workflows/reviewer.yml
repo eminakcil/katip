@@ -23,6 +23,17 @@ jobs:
         with:
           app-id: ${{ vars.REVIEWER_APP_ID }}
           private-key: ${{ secrets.REVIEWER_APP_KEY }}
+      # claude-code-action sets the git identity itself from bot_id/bot_name
+      # (default claude[bot]); pass the app bot so commits and test-guard agree.
+      - name: Resolve the reviewer bot identity
+        id: bot
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          SLUG: ${{ steps.app.outputs.app-slug }}
+        run: |
+          id=$(gh api "/users/${SLUG}%5Bbot%5D" --jq .id)
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+          echo "name=${SLUG}[bot]" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
           token: ${{ steps.app.outputs.token }}
@@ -32,6 +43,8 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ steps.app.outputs.token }}
+          bot_id: ${{ steps.bot.outputs.id }}
+          bot_name: ${{ steps.bot.outputs.name }}
           # Runs on PRs opened/updated by the implementer bot. Explicit list
           # only, never "*" (public repo).
           allowed_bots: "eminakcil-implementer"
