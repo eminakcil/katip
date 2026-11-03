@@ -1,10 +1,128 @@
-# GitHub Agent Pipeline — Spec
+# Agent Pipeline — Spec
 
-> A GitHub issue is tested, implemented and reviewed by three separate bots until it reaches merge. All bots run Claude Code on GitHub Actions; no server is needed.
+> A GitHub issue is specified, tested, implemented and reviewed by separate Claude agents before it reaches a PR.
 >
-> The pipeline is switched on only after the Phase 1 skeleton is done (see the checklist in `docs/project-brief.md`).
+> **Status: trial (ADR 0010).** The pipeline runs locally in Claude Code with the `/task <no>` skill. The GitHub Actions bot pipeline (ADR 0009, documented below) is disabled, not deleted, until the trial ends. Rollback: [How to roll back](#how-to-roll-back).
 
-## Actors and identities
+## Local pipeline (trial, ADR 0010)
+
+### Actors
+
+| Actor                  | Where                           | Does                                                                                                                     | Cannot                                                  |
+| ---------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------- |
+| Emin (`eminakcil`)     | GitHub, terminal                | Opens issues, writes or approves acceptance criteria, approves each push, merges, resolves `needs-human`                 |                                                         |
+| `/task` orchestrator   | `.claude/skills/task/SKILL.md`  | Works out the phase, runs the agents, verifies their output, sets labels, posts checkpoints, opens the PR (after asking) | Write code or tests; skip spec approval                 |
+| `planner` (Opus)       | `.claude/agents/planner.md`     | Drafts or validates acceptance criteria, writes a design note                                                            | Edit files, commit                                      |
+| `tester` (Opus)        | `.claude/agents/tester.md`      | Writes failing tests per criterion, defines new port interfaces and fakes, commits `Phase: tests`                        | Edit anything but test paths and port interfaces (hook) |
+| `implementer` (Sonnet) | `.claude/agents/implementer.md` | Turns tests green, commits `Phase: impl`; fixes review findings, commits `Phase: review-fix`                             | Edit test paths (hook), change ports or CI/lint config  |
+| `reviewer` (Opus)      | `.claude/agents/reviewer.md`    | Fresh-context review of the branch against criteria and tests; returns `APPROVE` / `CHANGES`                             | Edit files, commit                                      |
+| CI                     | `.github/workflows/ci.yml`      | test, typecheck, lint, mutation, test-guard                                                                              |                                                         |
+
+Agents never push, comment or change labels; the orchestrator does every `gh` write, and asks before pushing or opening a PR.
+
+### Flow
+
+Run `/task <no>` in Claude Code at the repo root. Each phase ends with a label change and a checkpoint comment on the issue (Done / Decided / Open).
+
+| Phase  | Label (while in phase) | What happens                                                                                                                                                                                                  | Ends with                                                         |
+| ------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| spec   | `status:spec`          | Planner drafts or validates the criteria and a design note. **Stops for Emin's explicit approval.** Approved criteria go into the issue body.                                                                 | `status:tests`                                                    |
+| tests  | `status:tests`         | Branch `task/<no>-<short-name>` from `origin/main`. Tester writes failing tests (names start with `AC<n>:`) and any port interfaces/fakes; orchestrator verifies they are red and touch only test/port paths. | commit `test(…): …` + `Phase: tests`; `status:impl`               |
+| impl   | `status:impl`          | Implementer makes the tests green; orchestrator verifies test paths are unchanged since the `Phase: tests` commit and that lint, typecheck and tests pass.                                                    | commit `feat/fix/refactor(…): …` + `Phase: impl`; `status:review` |
+| review | `status:review`        | Fresh reviewer checks diff vs criteria and tests, test quality, test-guard. `CHANGES` → implementer fixes (`Phase: review-fix`) → review again. Max 2 fix rounds, then `needs-human`.                         | verdict `APPROVE`                                                 |
+| pr     | —                      | After Emin says yes: push, `gh pr create` with `Closes #<no>` and an AC table; the `status:*` label is removed.                                                                                               | PR open; Emin merges (squash) after CI is green                   |
+
+`needs-human` stops the pipeline at any phase; the last checkpoint says why.
+
+New issues use the **Task** issue form (`.github/ISSUE_TEMPLATE/task.yml`: Goal, Acceptance criteria, Out of scope, Notes), which adds `status:spec`. An issue with no `status:*` label (older issues such as #22) also starts at spec, so criteria are always approved.
+
+### State and resume
+
+Session context is disposable; `/clear` freely. State lives in:
+
+- **Issue:** criteria (body), current phase (`status:*` label, `needs-human`), checkpoint comments (including `review — round N`).
+- **Git:** the task branch, one commit per phase, each with a `Phase: tests|impl|review-fix` trailer. Phase detection reads the trailers (`git log --format='%(trailers:key=Phase,valueonly)' origin/main..<branch>`), not commit-type prefixes.
+- **Rules:** `CLAUDE.md`, `.claude/agents/*.md`, `docs/adr/`.
+
+`/task <no>` is idempotent: it reads the label, the trailers and any open PR, picks up at the current phase, and fixes a label that disagrees with git (except that it never skips spec). If the worktree has uncommitted changes, it lists them and asks before continuing.
+
+### Test integrity
+
+Threat model: agent mistakes, not a hostile bot. Two lines:
+
+1. **Local hook** (`.claude/settings.json` → `.claude/hooks/guard-test-paths.mjs`, `PreToolUse` on `Edit|Write|MultiEdit|NotebookEdit`). Uses the subagent's `agent_type`: the implementer cannot edit test paths (`**/*.test.ts`, `**/test/**`); the tester can edit only test paths and port interfaces (`packages/core/src/ports/`, `packages/*/src/ports.ts`). Writes through Bash are not seen by the hook.
+2. **CI `test-guard`** (`.github/scripts/test-guard.sh`, base-branch copy). For PRs not opened by the implementer bot:
+   - **Commit order, every branch.** Walking the PR's non-merge commits oldest first: once a commit touches a path that is neither a test path nor a port interface, no later commit may touch test paths, and no single commit may mix test paths with such paths.
+   - **Exception:** a commit with the trailer `Test-Change-Approved: eminakcil` (`git commit --trailer 'Test-Change-Approved: eminakcil'`). Put an approved test change in its own commit.
+   - **Protected config, `task/*` branches only:** no changes to `.github/`, `biome.json`, `stryker.config.json`, `vitest.config.*`. Emin's own chore PRs may change them.
+   - Bot PRs keep the ADR 0009 checks (tests-frozen status, authorship, protected config) during the trial.
+
+Mutation testing is unchanged: Stryker on `packages/core`, break threshold 70%.
+
+### Repo settings during the trial
+
+| Setting           | Value                                                                                                                                   |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Ruleset on `main` | PR required, **0 approvals**, required checks (lint, typecheck, test, test-guard, mutation), no force push, linear history, squash only |
+| Code owner review | Off (Emin cannot approve their own PRs; with it on, every PR touching `.github/` is blocked)                                            |
+| Bot workflows     | Disabled (`gh workflow disable`), files kept                                                                                            |
+| Labels            | `status:spec`, `status:tests`, `status:impl`, `status:review`, `needs-human`; old `agent:*` labels kept until cleanup                   |
+
+The ruleset as it was before the trial is in `docs/ops/ruleset-backup.json`.
+
+### Setup (once)
+
+```sh
+# Last main with the bot pipeline
+git push origin pipeline-bots-v1
+
+# Disable the bot workflows (files stay)
+gh workflow disable tester.yml
+gh workflow disable implementer.yml
+gh workflow disable reviewer.yml
+gh workflow disable round-limit.yml
+
+# Labels for the local flow (needed before the issue form is used)
+gh label create status:spec   --color C5DEF5 --description "Spec drafted; waiting for owner approval" --force
+gh label create status:tests  --color 1D76DB --description "Spec approved; tester writes failing tests" --force
+gh label create status:impl   --color 0E8A16 --description "Tests committed; implementer makes them green" --force
+gh label create status:review --color FBCA04 --description "Implementation done; local review" --force
+gh label create needs-human   --color B60205 --description "Pipeline stopped; needs the owner" --force
+```
+
+Then, in Settings → Rules → `main-protection`: required approvals → 0; keep "Require review from Code Owners" off (or add yourself as a bypass actor).
+
+New agents and the hook are picked up when a Claude Code session starts; restart open sessions after pulling these files.
+
+### How to roll back
+
+1. Re-enable the bot workflows:
+
+   ```sh
+   gh workflow enable tester.yml
+   gh workflow enable implementer.yml
+   gh workflow enable reviewer.yml
+   gh workflow enable round-limit.yml
+   ```
+2. Restore the ruleset from `docs/ops/ruleset-backup.json`. Strip the read-only fields (`id`, `node_id`, `source`, `source_type`, `created_at`, `updated_at`, `current_user_can_bypass`, `_links`) and PUT the rest:
+
+   ```sh
+   node -e 'const r=require("./docs/ops/ruleset-backup.json").rulesets[0];for(const k of ["id","node_id","source","source_type","created_at","updated_at","current_user_can_bypass","_links"])delete r[k];process.stdout.write(JSON.stringify(r))' > ruleset.json
+   gh api -X PUT repos/eminakcil/katip/rulesets/26394281 --input ruleset.json
+   ```
+
+   If the ruleset was deleted, use `-X POST repos/eminakcil/katip/rulesets` instead.
+3. The bot branch of `test-guard` was never changed, so bot PRs are checked as before. The local-flow branch only runs on PRs not opened by the implementer bot.
+4. `.claude/` and the issue form are inert for the bots; keep them or revert. `git diff pipeline-bots-v1 main` shows everything the trial changed.
+5. Set ADR 0010 to `Status: Rejected` with a short reason.
+
+---
+
+## Bot pipeline (disabled during the trial, ADR 0009)
+
+> Three GitHub Apps run Claude Code on GitHub Actions and hand work to each other through labels. Kept for reference and rollback; removed if ADR 0010 is accepted.
+
+### Actors and identities
 
 Each bot is a separate GitHub App, so no extra GitHub accounts or emails are needed. Because identities differ, the "cannot approve your own PR" rule is not a problem.
 
@@ -18,7 +136,7 @@ Each bot is a separate GitHub App, so no extra GitHub accounts or emails are nee
 
 No agent merges. When the repository variable `AUTO_MERGE` is `true`, a deterministic step in `implementer.yml` (not the agent) enables `gh pr merge --auto --squash` on the task's PR; GitHub merges once the reviewer approves and CI is green. While `AUTO_MERGE` is `false` (Phase 2), Emin merges.
 
-## Flow
+### Flow
 
 1. Emin opens an issue and adds `agent:ready`.
 2. **tester.yml** (trigger: `agent:ready` added) opens `task/<no>-<short-name>` from main, writes failing tests and pushes. A deterministic workflow step then sets a `tests-frozen` commit status on the pushed SHA and adds `agent:tests-ready`.
@@ -26,7 +144,7 @@ No agent merges. When the repository variable `AUTO_MERGE` is `true`, a determin
 4. **reviewer.yml** (trigger: implementer's PR opened or updated) approves or requests changes.
 5. After two review rounds without resolution, the task gets `needs-human`.
 
-## GitHub App permissions
+### GitHub App permissions
 
 Only **Repository permissions** are used. Organization, Account and Enterprise permissions stay "No access" (exception: org Projects if the repo is in an organization). Webhook is disabled; GitHub Actions handles triggers. Install "Only on this account", on this repo only.
 
@@ -44,7 +162,7 @@ Only **Repository permissions** are used. Organization, Account and Enterprise p
 
 `Workflows: No access` deliberately prevents bots from editing `.github/workflows/`. `.pem` files are secrets: never committed. The tester needs `Commit statuses: Read & write` for the `tests-frozen` handoff status; the implementer must stay read-only there, so it cannot fake one.
 
-## Repo settings
+### Repo settings
 
 | Setting           | Value                                                                                                 |
 | ----------------- | ----------------------------------------------------------------------------------------------------- |
@@ -59,7 +177,7 @@ Only **Repository permissions** are used. Organization, Account and Enterprise p
 
 **Projects board:** Backlog, Ready, In Progress, In Review, Needs Human, Done. The repo is on a personal account, where GitHub Apps cannot move board cards, so labels are the pipeline's state machine and the board is Emin's view only, kept in sync by GitHub's built-in automations (ADR 0009).
 
-## Secrets
+### Secrets
 
 Stored in Settings → Secrets and variables → Actions.
 
@@ -72,7 +190,7 @@ Stored in Settings → Secrets and variables → Actions.
 
 Each workflow mints a short-lived app token with `actions/create-github-app-token`. Events created with the default `GITHUB_TOKEN` do not trigger other workflows; events created with app tokens do. This is what lets bots hand work to each other.
 
-## Workflow skeleton (implementer example)
+### Workflow skeleton (implementer example)
 
 ```yaml
 on:
@@ -130,11 +248,11 @@ jobs:
           gh pr merge "$PR" --auto --squash
 ```
 
-### Commit identity (`bot_id`, `bot_name`)
+#### Commit identity (`bot_id`, `bot_name`)
 
 `claude-code-action` configures git itself from its `bot_id` and `bot_name` inputs, which default to `claude[bot]` and override any earlier `git config`. Each workflow therefore resolves its app bot first (step `bot`: `gh api /users/<app-slug>%5Bbot%5D` for the id, `<app-slug>[bot]` for the name) and passes both to the action, so commits are authored by `eminakcil-tester[bot]` / `eminakcil-implementer[bot]`. There is no separate `git config` step, and the committing agents run with `--disallowedTools "Bash(git config:*),Bash(git -c:*)"`. Claude Code's own attribution is turned off (`settings: {"includeCoAuthoredBy": false, "attribution": {"commit": "", "pr": ""}}`), so no `Co-Authored-By: Claude` trailer reaches the branch commits, and GitHub's squash merge has no Claude co-author to copy. The `tests-frozen` check in test-guard does not depend on the author; the authorship check is a second line of defense.
 
-### Bot-triggered runs (`allowed_bots`)
+#### Bot-triggered runs (`allowed_bots`)
 
 `claude-code-action` refuses to run when the triggering actor is a bot, unless that bot is listed in `allowed_bots`. Each workflow lists exactly the bots that legitimately start it:
 
@@ -148,7 +266,7 @@ jobs:
 
 Tester and reviewer use the same skeleton, differing only in trigger, app secrets, instruction file, `--model` (`claude-opus-5-5` for both, ADR 0009) and `--allowedTools`, and they have no auto-merge step. The reviewer has no `Edit`/`Write`.
 
-## Agent instruction files (`.github/claude/`)
+### Agent instruction files (`.github/claude/`)
 
 Protected by `CODEOWNERS`, so agents cannot change their own rules. Every mistake seen during calibration becomes a rule here.
 
@@ -180,7 +298,7 @@ Protected by `CODEOWNERS`, so agents cannot change their own rules. Every mistak
 - If all good, `--approve` with the criteria table.
 - Otherwise `--request-changes` with file and line references. After round 2, if still failing, add `needs-human`.
 
-## CI checks
+### CI checks
 
 Agent instructions are a request; CI is a rule. Critical constraints are enforced by CI and marked as required status checks.
 
@@ -192,7 +310,7 @@ Agent instructions are a request; CI is a rule. Critical constraints are enforce
 | mutation        | Tests that prove nothing                             | Stryker on changed files; fail below threshold (start at 70%)                                                                                                                                                                                                                        |
 | round-limit     | Infinite bot loop                                    | `round-limit.yml` bumps `agent:round-1` → `agent:round-2`; a third request-changes adds `needs-human`, and the implementer workflow skips after two rounds                                                                                                                           |
 
-## Setup order
+### Setup order
 
 1. Repo (personal account or organization)
 2. Create the three GitHub Apps, get App IDs and private keys, install on the repo
@@ -205,6 +323,6 @@ Agent instructions are a request; CI is a rule. Critical constraints are enforce
 9. Open a trial issue, add `agent:ready`, watch the flow end to end
 10. Verify the bot approval counts toward the ruleset's required approvals
 
-## Decisions
+### Decisions
 
 Resolved in ADR 0009: personal account with labels as the state machine; Opus 5.5 for tester and reviewer, Sonnet 5.5 for implementer; `CLAUDE_CODE_OAUTH_TOKEN`; auto-merge gated by the `AUTO_MERGE` repo variable (starts `false`); Stryker on `packages/core` with a 70% break threshold.
